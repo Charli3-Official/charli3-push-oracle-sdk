@@ -1,6 +1,7 @@
 from pycardano import PlutusData
 from pycardano.serialization import IndefiniteList
 from dataclasses import dataclass
+from typing import Union
 
 @dataclass
 class NodeInfo(PlutusData):
@@ -19,6 +20,10 @@ class PriceFeed(PlutusData):
     df: DataFeed   
 
 @dataclass
+class Nothing(PlutusData):     
+    CONSTR_ID = 1
+
+@dataclass
 class PriceMap():
     price_map: dict
 
@@ -31,12 +36,12 @@ class PriceData(PlutusData):
 class NodeState(PlutusData):
     CONSTR_ID = 0 
     nodeOperator: NodeInfo
-    nodeFeed: PriceFeed       
+    nodeFeed: Union[PriceFeed, Nothing]       
     
 @dataclass
 class NodeDatum(PlutusData):
     CONSTR_ID= 1
-    NodeDatum: NodeState
+    nodeDatum: NodeState
 
 @dataclass
 class OracleDatum(PlutusData):
