@@ -56,7 +56,7 @@ class ChainQuery(BlockFrostChainContext):
     
     def filter_utxos_by_asset(self, utxos, asset):
         """filter list of UTxOs by given asset"""
-        return list(filter(lambda x: x.output.amount.multi_asset == asset, utxos))
+        return list(filter(lambda x: x.output.amount.multi_asset >= asset, utxos))
     
     def get_datums_for_utxo(self, utxos):
         """insert datum for UTxOs"""
@@ -74,6 +74,15 @@ class ChainQuery(BlockFrostChainContext):
                 if node_datum.nodeDatum.nodeOperator == node_info:
                     return datum
         return None 
+
+    def filter_node_utxos_by_node_info(self, utxos, node_info):
+        if len(utxos) > 0:
+            for utxo in utxos:
+                if utxo.output.datum:
+                    node_datum = NodeDatum.from_cbor(utxo.output.datum.cbor)
+                    if node_datum.nodeDatum.nodeOperator == node_info:
+                        return utxo
+        return None
 
     def filter_utxos_by_datum_hash(self, utxos, datum_hash):
         """filter list of UTxOs by given datum_hash"""
@@ -100,7 +109,8 @@ class ChainQuery(BlockFrostChainContext):
         for utxo in self.utxos(str(target_address)):
             # A collateral should contain no multi asset
             if not utxo.output.amount.multi_asset:
-                return utxo
+                if utxo.output.amount < 10000000:    
+                    return utxo
         return None
 
     def create_collateral(self, target_address, skey):
