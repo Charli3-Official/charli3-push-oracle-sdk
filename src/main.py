@@ -1,21 +1,22 @@
-#import cbor2
+import cbor2
 import time
 from pycardano import ( Network, Address, PaymentVerificationKey, PaymentSigningKey,
                        TransactionOutput, TransactionBuilder, Redeemer, RedeemerTag, MultiAsset
-                       , ExecutionUnits)
+                       , ExecutionUnits, PlutusV2Script)
 from datums import *
 from redeemers import *
 from chain_query import ChainQuery
 from node import Node
+from mint import Mint
 
 network = Network.TESTNET
 context = ChainQuery("YOUR_TOKEN_ID_HERE",
                     network,
                     base_url="https://cardano-preprod.blockfrost.io/api")
 
-oracle_addr = "addr_test1wqnw0lcnqdg6gaxmrc787q75kjrd37skmnnlet3zeegnxlc3kcukz"
-oracle_script_hash = Address.from_primitive(oracle_addr).payment_part
-oracle_v2_script=context._get_script(oracle_script_hash)
+# oracle_addr = "addr_test1wqnw0lcnqdg6gaxmrc787q75kjrd37skmnnlet3zeegnxlc3kcukz"
+# oracle_script_hash = Address.from_primitive(oracle_addr).payment_part
+# oracle_v2_script=context._get_script(oracle_script_hash)
 
 # Code to generate new skey and vkey
 # node_signing_key = PaymentSigningKey.generate()
@@ -27,19 +28,28 @@ node_signing_key = PaymentSigningKey.load("node.skey")
 node_verification_key = PaymentVerificationKey.load("node.vkey")
 node_pub_key_hash = node_verification_key.hash()
 node_address = Address(payment_part=node_pub_key_hash, network=network)
+with open("./mint_script.plutus", "r") as f:
+            script_hex = f.read()
+            plutus_script_v2 = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
+# node_nft = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
+#                     {b'NodeFeed': 1}})
 
-node_nft = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
-                    {b'NodeFeed': 1}})
+# aggstate_nft = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
+#                     {b'AggState': 1}})
 
-aggstate = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
-                    {b'AggState': 1}})
-
+# oracle_nft = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
+#                     {b'OracleFeed': 1}})
 # node = Node(network, context, node_signing_key, node_verification_key, node_nft, oracle_addr)
 # node.update(304204)
-
-utxos = context.utxos(str(oracle_addr))
-aggstate_utxo = context.filter_utxos_by_asset(utxos, node_nft)
-print(aggstate_utxo)
+c3_token = Mint(network, context, node_signing_key, node_verification_key, plutus_script_v2)
+c3_token.mint_nft_with_script()
+# utxos = context.utxos(str(oracle_addr))
+# oracle_utxo = context.filter_utxos_by_asset(utxos, oracle_nft)
+# print(oracle_utxo)
+# oracle_datum  = OracleDatum.from_cbor("d8799fd87b9fa3021b000001837ba4b397011b000001837b9b8bd70001ffff")
+# print(oracle_datum)
+# new_oracle_datum = OracleDatum(PriceData.set_price_map(1,1664226134999,1664226734999))
+# print(new_oracle_datum)
 # nodes_utxos = context.filter_utxos_by_asset(utxos,node_nft)
 # # nodes_datums = context.get_datums_for_utxo(nodes_utxos)
 # # print(nodes_utxos)
