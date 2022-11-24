@@ -27,12 +27,13 @@ class Node():
         self.address = Address(payment_part=self.pub_key_hash, network=self.network)
         self.node_nft = node_nft
         self.node_info = NodeInfo(bytes.fromhex(str(self.pub_key_hash)))
-        self.oracle_addr = oracle_addr
-        self.oracle_script_hash = Address.from_primitive(self.oracle_addr).payment_part
+        self.oracle_addr = Address.from_primitive(oracle_addr)
+        self.oracle_script_hash = self.oracle_addr.payment_part
 
     def update(self, rate: int):
         """build's partial node update tx."""
-        node_own_utxo = self.get_node_own_utxo()
+        oracle_utxos = self.context.utxos(str(self.oracle_addr))
+        node_own_utxo = self.get_node_own_utxo(oracle_utxos)
         node_own_datum = NodeDatum.from_cbor(node_own_utxo.output.datum.cbor)
         time_ms = round(time.time_ns()*1e-6)
         new_node_feed = PriceFeed(DataFeed(rate, time_ms))
@@ -61,7 +62,7 @@ class Node():
     def create_reference_script(self):
         """build's partial reference script tx."""
 
-        oracle_script = self.context._get_script(self.oracle_script_hash)
+        oracle_script = self.context._get_script(str(self.oracle_script_hash))
         reference_script_utxo_output = TransactionOutput(
             address=self.oracle_addr,
             amount=20000000,
@@ -93,9 +94,8 @@ class Node():
             [self.signing_key], change_address=self.address)
         self.context.submit_tx_with_print(signed_tx)
 
-    def get_node_own_utxo(self) -> UTxO:
+    def get_node_own_utxo(self, oracle_utxos: List[UTxO]) -> UTxO:
         """returns node's own utxo"""
-        oracle_utxos = self.context.utxos(str(self.oracle_addr))
         nodes_utxos = self.filter_utxos_by_asset(oracle_utxos, self.node_nft)
         return self.filter_node_utxos_by_node_info(nodes_utxos)
 
