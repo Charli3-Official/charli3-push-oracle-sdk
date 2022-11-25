@@ -66,7 +66,7 @@ class NodeState(PlutusData):
 class NodeDatum(PlutusData):
     """represents Node Datum"""
     CONSTR_ID = 1
-    nodeDatum: NodeState
+    node_state: NodeState
 
 
 @dataclass

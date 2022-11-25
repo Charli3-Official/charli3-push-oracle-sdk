@@ -34,10 +34,10 @@ class Node():
         """build's partial node update tx."""
         oracle_utxos = self.context.utxos(str(self.oracle_addr))
         node_own_utxo = self.get_node_own_utxo(oracle_utxos)
-        node_own_datum = NodeDatum.from_cbor(node_own_utxo.output.datum.cbor)
+        node_own_datum : NodeDatum = NodeDatum.from_cbor(node_own_utxo.output.datum.cbor)
         time_ms = round(time.time_ns()*1e-6)
         new_node_feed = PriceFeed(DataFeed(rate, time_ms))
-        node_own_datum.nodeDatum.nodeFeed = new_node_feed
+        node_own_datum.node_state.nodeFeed = new_node_feed
 
         node_update_utxo_output = TransactionOutput(
             address=node_own_utxo.output.address,
@@ -95,7 +95,7 @@ class Node():
         self.context.submit_tx_with_print(signed_tx)
 
     def get_node_own_utxo(self, oracle_utxos: List[UTxO]) -> UTxO:
-        """returns node's own utxo"""
+        """returns node's own utxo from list of oracle UTxOs"""
         nodes_utxos = self.filter_utxos_by_asset(oracle_utxos, self.node_nft)
         return self.filter_node_utxos_by_node_info(nodes_utxos)
 
@@ -105,10 +105,11 @@ class Node():
 
     def filter_node_utxos_by_node_info(self, nodes_utxo: List[UTxO]) -> UTxO:
         """filter list of UTxOs by given node_info"""
+        node_datum : NodeDatum
         if len(nodes_utxo) > 0:
             for utxo in nodes_utxo:
                 if utxo.output.datum:
                     node_datum = NodeDatum.from_cbor(utxo.output.datum.cbor)
-                    if node_datum.nodeDatum.nodeOperator == self.node_info:
+                    if node_datum.node_state.nodeOperator == self.node_info:
                         return utxo
         return None
