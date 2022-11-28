@@ -2,7 +2,6 @@ from pycardano import BlockFrostChainContext, Network , TransactionBuilder, Tran
 from blockfrost import ApiUrls, BlockFrostApi
 from blockfrost.utils import request_wrapper
 from datums import *
-import json
 import os
 import requests
 from retry import retry                    
@@ -53,11 +52,8 @@ class ChainQuery(BlockFrostChainContext):
             datum = self.api.script_datum_cbor(str(utxo.output.datum_hash)).cbor
             return datum
         return None
-    
-    def filter_utxos_by_asset(self, utxos, asset):
-        """filter list of UTxOs by given asset"""
-        return list(filter(lambda x: x.output.amount.multi_asset >= asset, utxos))
-    
+
+
     def get_datums_for_utxo(self, utxos):
         """insert datum for UTxOs"""
         result = []
@@ -66,32 +62,6 @@ class ChainQuery(BlockFrostChainContext):
                 datum = self._get_datum(utxo)
                 result.append(datum)
         return result
-    
-    def filter_node_datums_by_node_info(self, node_datums, node_info):
-        if len(node_datums) > 0:
-            for datum in node_datums:
-                node_datum = NodeDatum.from_cbor(datum)
-                if node_datum.nodeDatum.nodeOperator == node_info:
-                    return datum
-        return None 
-
-    def filter_node_utxos_by_node_info(self, utxos, node_info):
-        if len(utxos) > 0:
-            for utxo in utxos:
-                if utxo.output.datum:
-                    node_datum = NodeDatum.from_cbor(utxo.output.datum.cbor)
-                    if node_datum.nodeDatum.nodeOperator == node_info:
-                        return utxo
-        return None
-
-    def filter_utxos_by_datum_hash(self, utxos, datum_hash):
-        """filter list of UTxOs by given datum_hash"""
-        result = []
-        if len(utxos) > 0:
-            for utxo in utxos:
-                if utxo.output.datum_hash == datum_hash:
-                    result.append(utxo)
-        return result 
     
     @retry(delay=20)
     def wait_for_tx(self, tx_id):
@@ -109,8 +79,9 @@ class ChainQuery(BlockFrostChainContext):
         for utxo in self.utxos(str(target_address)):
             # A collateral should contain no multi asset
             if not utxo.output.amount.multi_asset:
-                if utxo.output.amount < 10000000:    
-                    return utxo
+                if utxo.output.amount < 10000000:
+                    if utxo.output.amount.coin >= 5000000:
+                        return utxo
         return None
 
     def create_collateral(self, target_address, skey):
@@ -119,8 +90,5 @@ class ChainQuery(BlockFrostChainContext):
         collateral_builder.add_input_address(target_address)
         collateral_builder.add_output(TransactionOutput(target_address, 5000000))
 
-        self.submit_tx(collateral_builder.build_and_sign([skey], target_address))
-    
+        self.submit_tx_with_print(collateral_builder.build_and_sign([skey], target_address))
 
-    
-    
