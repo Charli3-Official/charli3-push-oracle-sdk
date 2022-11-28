@@ -65,7 +65,7 @@ class Mint():
         # Add minting script with an empty datum and a minting redeemer
         builder.add_minting_script(
             self.minting_script_plutus_v2, redeemer=Redeemer(RedeemerTag.MINT, MintToken(),
-            ExecutionUnits(1000000, 178979640))
+            ExecutionUnits(1000000, 300979640))
         )
 
         # Set nft we want to mint
