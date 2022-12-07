@@ -1,9 +1,10 @@
 """Node contract transactions class"""
 import time
 from typing import List
+import cbor2
 from pycardano import (Network, Address, PaymentVerificationKey, PaymentSigningKey,
                        TransactionOutput, TransactionBuilder, Redeemer, RedeemerTag,
-                       MultiAsset, ExecutionUnits, UTxO)
+                       MultiAsset, UTxO, plutus_script_hash, PlutusV2Script)
 from datums import NodeDatum, NodeInfo, PriceFeed, DataFeed
 from redeemers import NodeUpdate
 from chain_query import ChainQuery
@@ -27,7 +28,7 @@ class Node():
         self.address = Address(payment_part=self.pub_key_hash, network=self.network)
         self.node_nft = node_nft
         self.node_info = NodeInfo(bytes.fromhex(str(self.pub_key_hash)))
-        self.oracle_addr = Address.from_primitive(oracle_addr)
+        self.oracle_addr = oracle_addr
         self.oracle_script_hash = self.oracle_addr.payment_part
 
     def update(self, rate: int):
@@ -46,7 +47,7 @@ class Node():
         )
 
         node_update_redeemer = Redeemer(
-            RedeemerTag.SPEND, NodeUpdate(), ExecutionUnits(1000000, 80000000))
+            RedeemerTag.SPEND, NodeUpdate())
 
         builder = TransactionBuilder(self.context)
 
@@ -57,27 +58,33 @@ class Node():
             .add_input_address(self.address)
         )
 
-        self.submit_tx_builder(builder)
+        # self.submit_tx_builder(builder)
 
     def create_reference_script(self):
         """build's partial reference script tx."""
 
         oracle_script = self.context._get_script(str(self.oracle_script_hash))
-        reference_script_utxo_output = TransactionOutput(
-            address=self.oracle_addr,
-            amount=20000000,
-            script=oracle_script
-        )
+        if plutus_script_hash(oracle_script) != self.oracle_script_hash:
+            oracle_script = PlutusV2Script(cbor2.dumps(oracle_script))
 
-        builder = TransactionBuilder(self.context)
+        if plutus_script_hash(oracle_script) == self.oracle_script_hash:
+            reference_script_utxo_output = TransactionOutput(
+                address=self.oracle_addr,
+                amount=20000000,
+                script=oracle_script
+            )
 
-        (
-            builder
-            .add_output(reference_script_utxo_output)
-            .add_input_address(self.address)
-        )
+            builder = TransactionBuilder(self.context)
 
-        self.submit_tx_builder(builder)
+            (
+                builder
+                .add_output(reference_script_utxo_output)
+                .add_input_address(self.address)
+            )
+
+            self.submit_tx_builder(builder)
+        else:
+            print("script hash mismatch")
 
     def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx , sign and submit tx."""
