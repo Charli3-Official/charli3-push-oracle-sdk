@@ -1,7 +1,8 @@
-from pycardano import BlockFrostChainContext, Network , TransactionBuilder, TransactionOutput, Transaction
+from typing import List
+from pycardano import BlockFrostChainContext, Network , TransactionBuilder, TransactionOutput, Transaction, UTxO, RawCBOR
 from blockfrost import ApiUrls, BlockFrostApi
 from blockfrost.utils import request_wrapper
-from datums import *
+from datums import NodeDatum
 import os
 import requests
 from retry import retry                    
@@ -62,8 +63,20 @@ class ChainQuery(BlockFrostChainContext):
                 datum = self._get_datum(utxo)
                 result.append(datum)
         return result
-    
-    @retry(delay=20)
+
+    def get_node_datums_with_utxo(self, utxos:List[UTxO]) -> List[UTxO]:
+        """insert datum for UTxOs"""
+        result: List[UTxO] = []
+        if len(utxos) > 0:
+            for utxo in utxos:
+                if utxo.output.amount.multi_asset :
+                    datum = self._get_datum(utxo)
+                    if datum :
+                        utxo.output.datum = NodeDatum.from_cbor(datum)
+                    result.append(utxo)
+        return result
+
+    @retry(delay=10)
     def wait_for_tx(self, tx_id):
         self.api.transaction(tx_id)
         print(f"Transaction {tx_id} has been successfully included in the blockchain.")

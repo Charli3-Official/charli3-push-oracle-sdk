@@ -29,3 +29,6 @@ class UpdateSettings(PlutusData):
 @dataclass
 class OracleClose(PlutusData):
     CONSTR_ID= 6
+@dataclass
+class MintToken(PlutusData):
+    CONSTR_ID= 0
