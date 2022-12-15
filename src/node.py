@@ -58,7 +58,7 @@ class Node():
             .add_input_address(self.address)
         )
 
-        # self.submit_tx_builder(builder)
+        self.submit_tx_builder(builder)
 
     def create_reference_script(self):
         """build's partial reference script tx."""

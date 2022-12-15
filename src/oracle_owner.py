@@ -3,11 +3,12 @@ import time
 from copy import deepcopy
 from typing import List, Optional
 import cbor2
-from pycardano import (Network, Address, PaymentVerificationKey, Value, PlutusV2Script,
+from pycardano import (Network, Address, PaymentVerificationKey, Value, PlutusV2Script, AssetName, Asset,
                        TransactionOutput, TransactionBuilder, Redeemer, RedeemerTag, plutus_script_hash,
                        MultiAsset, UTxO, PaymentExtendedSigningKey, VerificationKeyHash, ScriptHash)
+from pycardano.exception import InsufficientUTxOBalanceException, UTxOSelectionException
 from datums import NodeDatum, NodeInfo, AggDatum, OracleSettings, NodeState, Nothing
-from redeemers import Aggregate, UpdateSettings, MintToken
+from redeemers import Aggregate, UpdateSettings, MintToken, OracleClose
 from chain_query import ChainQuery
 from oracle_checks import filter_utxos_by_asset, check_node_exists, get_node_own_utxo
 
@@ -22,6 +23,8 @@ class OracleOwner():
                     aggstate_nft: MultiAsset,
                     oracle_nft : MultiAsset,
                     minting_nft_hash: ScriptHash,
+                    c3_token_hash: ScriptHash,
+                    c3_token_name: AssetName,
                     oracle_addr: Address,
                     stake_key: Optional[PaymentVerificationKey]
                  ) -> None:
@@ -43,6 +46,8 @@ class OracleOwner():
         self.oracle_addr = Address.from_primitive(oracle_addr)
         self.oracle_script_hash = self.oracle_addr.payment_part
         self.nft_hash = minting_nft_hash
+        self.c3_token_hash = c3_token_hash
+        self.c3_token_name = c3_token_name
         self.single_node_nft = MultiAsset.from_primitive({self.nft_hash.payload: {b"NodeFeed": 1}})
 
     def add_nodes(self, pkhs:List[str]):
@@ -178,6 +183,77 @@ class OracleOwner():
         else:
             print("Settings not changed or modified osNodeList")
 
+    def add_funds(self, funds: int):
+        """add funds (payment token) to aggstate UTxO of oracle script."""
+        
+        try:
+            oracle_utxos = self.context.utxos(str(self.oracle_addr))
+            aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos,self.aggstate_nft)[0]
+
+            if funds > 0 :
+
+                # prepare datums, redeemers and new node utxos for eligible nodes
+                add_funds_redeemer = Redeemer(RedeemerTag.SPEND, UpdateSettings())
+
+                builder = TransactionBuilder(self.context)
+                builder.add_script_input(aggstate_utxo, redeemer=deepcopy(add_funds_redeemer))
+
+                aggstate_tx_output = deepcopy(aggstate_utxo.output)
+                aggstate_tx_output.amount.multi_asset[self.c3_token_hash][self.c3_token_name] += funds
+                builder.add_output(aggstate_tx_output)
+
+                builder.add_input_address(self.address)
+                self.submit_tx_builder(builder)
+
+        except (InsufficientUTxOBalanceException, UTxOSelectionException) as exc:
+            print("Insufficient Funds in Owner wallet.", exc)
+    
+    def oracle_close(self):
+        """remove all oralce utxos from oracle script."""
+
+        oracle_utxos = self.context.utxos(str(self.oracle_addr))
+        aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos,self.aggstate_nft)[0]
+        oraclefeed_utxo : UTxO = filter_utxos_by_asset(oracle_utxos,self.oracle_nft)[0]
+
+        node_utxos : List[UTxO] = filter_utxos_by_asset(oracle_utxos,self.node_nft)
+
+
+
+        if oraclefeed_utxo and aggstate_utxo:
+            # prepare datums, redeemers and new node utxos for eligible nodes
+            oracle_close_redeemer = Redeemer(RedeemerTag.SPEND, OracleClose())
+
+            builder = TransactionBuilder(self.context)
+            builder.add_script_input(aggstate_utxo, redeemer=deepcopy(oracle_close_redeemer))
+            builder.add_script_input(oraclefeed_utxo, redeemer=deepcopy(oracle_close_redeemer))
+
+            nft_minting_script = self.get_plutus_script(self.nft_hash)
+
+            oracle_nfts = MultiAsset.from_primitive(
+                {
+                    self.nft_hash.payload: {
+                        b"NodeFeed": -len(node_utxos),  # Negative sign indicates burning
+                        b"AggState": -1,
+                        b"OracleFeed": -1,
+                    }
+                }
+            )
+
+            builder.add_minting_script(nft_minting_script, redeemer=Redeemer(RedeemerTag.MINT,
+                MintToken()))
+
+            builder.mint = oracle_nfts
+            
+            # finding node utxos for oracle_close
+            # TO DO :: transfer c3 tokens to respective node operator address
+            for node in node_utxos:
+                builder.add_script_input(node, redeemer=deepcopy(oracle_close_redeemer))
+
+            builder.add_input_address(self.address)
+            self.submit_tx_builder(builder)
+
+        else:
+            print("oracle close error.")
 
     def create_reference_script(self):
         """build's partial reference script tx."""
@@ -237,7 +313,6 @@ class OracleOwner():
 
     def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx , sign and submit tx."""
-        print(self.address)
         non_nft_utxo = self.context.find_collateral(self.address)
 
         if non_nft_utxo is None:
