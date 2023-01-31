@@ -1,20 +1,37 @@
 import cbor2
 import time
-from pycardano import ( Network, Address, PaymentVerificationKey, PaymentSigningKey,
-                       TransactionOutput, TransactionBuilder, Redeemer, RedeemerTag, MultiAsset
-                       , ExecutionUnits, PlutusV2Script)
+from pycardano import (
+    Network,
+    Address,
+    PaymentVerificationKey,
+    PaymentSigningKey,
+    TransactionOutput,
+    TransactionBuilder,
+    Redeemer,
+    RedeemerTag,
+    MultiAsset,
+    ExecutionUnits,
+    PlutusV2Script,
+    ScriptHash,
+    AssetName,
+)
 from datums import *
 from redeemers import *
 from chain_query import ChainQuery
 from node import Node
 from mint import Mint
+from consensus import aggregation, median
 
 network = Network.TESTNET
-context = ChainQuery("YOUR_TOKEN_ID_HERE",
-                    network,
-                    base_url="https://cardano-preprod.blockfrost.io/api")
+context = ChainQuery(
+    "YOUR_TOKEN_ID_HERE",
+    network,
+    base_url="https://cardano-preprod.blockfrost.io/api",
+)
 
-oracle_addr = Address.from_primitive("addr_test1wpvzsfp3v02dqc7cu3gse36705w5llu80au9v8hpjlx6l5s5lz9h8")
+oracle_addr = Address.from_primitive(
+    "addr_test1wz6jdu4f0eeamgzz2a8wt3eufux33nv6ju35z6r4de5rl0sncyqgh"
+)
 oracle_script_hash = oracle_addr.payment_part
 # oracle_v2_script=context._get_script(oracle_script_hash)
 
@@ -24,8 +41,8 @@ oracle_script_hash = oracle_addr.payment_part
 # node_verification_key = PaymentVerificationKey.from_signing_key(node_signing_key)
 # node_verification_key.save("oracle-owner.vkey")
 
-node_signing_key = PaymentSigningKey.load("node.skey")
-node_verification_key = PaymentVerificationKey.load("node.vkey")
+node_signing_key = PaymentSigningKey.load("node4.skey")
+node_verification_key = PaymentVerificationKey.load("node4.vkey")
 node_pub_key_hash = node_verification_key.hash()
 node_address = Address(payment_part=node_pub_key_hash, network=network)
 print(node_pub_key_hash)
@@ -33,17 +50,40 @@ print(node_address)
 # with open("./mint_script.plutus", "r") as f:
 #             script_hex = f.read()
 #             plutus_script_v2 = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
-node_nft = MultiAsset.from_primitive({"553db372db25c16975e95a0a7dec754dd697650b5bfe10e005699b15":
-                    {b'NodeFeed': 1}})
+node_nft = MultiAsset.from_primitive(
+    {"2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20": {b"NodeFeed": 1}}
+)
 
-# aggstate_nft = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
-#                     {b'AggState': 1}})
+aggstate_nft = MultiAsset.from_primitive(
+    {"2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20": {b"AggState": 1}}
+)
 
-# oracle_nft = MultiAsset.from_primitive({"e8567563996ac0e51a900dda39578c4174a8a63625669cbd47c846fa":
-#                     {b'OracleFeed': 1}})
-node = Node(network, context, node_signing_key, node_verification_key, node_nft, oracle_addr)
-node.create_reference_script()
-# node.update(304204)
+oracle_nft = MultiAsset.from_primitive(
+    {"2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20": {b"OracleFeed": 1}}
+)
+
+c3_token_hash = ScriptHash.from_primitive(
+    "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
+)
+c3_token_name = AssetName(b"PAYMENTTOKEN")
+
+node = Node(
+    network,
+    context,
+    node_signing_key,
+    node_verification_key,
+    node_nft,
+    aggstate_nft,
+    oracle_nft,
+    oracle_addr,
+    c3_token_hash,
+    c3_token_name,
+)
+# node.create_reference_script()
+node.update(374092)
+# node.aggregate()
+# node.update_aggregate(364340)
+# node.collect()
 # c3_token = Mint(network, context, node_signing_key, node_verification_key, plutus_script_v2)
 # c3_token.mint_nft_with_script()
 # utxos = context.utxos(str(oracle_addr))
@@ -59,7 +99,7 @@ node.create_reference_script()
 # node_info = NodeInfo(bytes.fromhex(str(node_pub_key_hash)))
 # node_own_datum_cbor = context.filter_node_datums_by_node_info(nodes_datums,node_info)
 # node_own_datum =  NodeDatum.from_cbor(node_own_datum_cbor)
-# node_own_datum=   NodeDatum(nodeDatum=NodeState(nodeOperator=NodeInfo(niNodeOperator=b'7\x08\x03\x14\xef\xdawS\xfaN\xf1\xf8\xa1\x9e\xc9\xb7\xe9#v\xd0gx\xe1\x8dEk\x94m'), 
+# node_own_datum=   NodeDatum(nodeDatum=NodeState(nodeOperator=NodeInfo(niNodeOperator=b'7\x08\x03\x14\xef\xdawS\xfaN\xf1\xf8\xa1\x9e\xc9\xb7\xe9#v\xd0gx\xe1\x8dEk\x94m'),
 #                     nodeFeed=PriceFeed(df=DataFeed(dfValue=323226, dfLastUpdate=1668826556820))))
 # node_own_datum_hash = node_own_datum.hash()
 # node_own_utxo = context.filter_utxos_by_datum_hash(nodes_utxos,node_own_datum_hash)[0]
@@ -105,3 +145,5 @@ node.create_reference_script()
 # builder.required_signers = [node_pub_key_hash]
 # signed_tx = builder.build_and_sign([node_signing_key], change_address=node_address)
 # context.submit_tx_with_print(signed_tx)
+# print(aggregation(20000,1500,[366248,365554,362416, 361549]))
+# print(aggregation(20000,1500,[1,2,3,4,5]))
