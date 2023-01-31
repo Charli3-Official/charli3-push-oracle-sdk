@@ -1,25 +1,41 @@
 """offchain code containing mint class"""
 from dataclasses import dataclass
-from pycardano import (Network, Address, PaymentVerificationKey, PaymentSigningKey,
-                       TransactionOutput, TransactionBuilder, Redeemer, RedeemerTag, Value,
-                       MultiAsset, PlutusV2Script, plutus_script_hash, PlutusData
-                       , AuxiliaryData, AlonzoMetadata, Metadata, ExecutionUnits)
+from pycardano import (
+    Network,
+    Address,
+    PaymentVerificationKey,
+    PaymentSigningKey,
+    TransactionOutput,
+    TransactionBuilder,
+    Redeemer,
+    RedeemerTag,
+    Value,
+    MultiAsset,
+    PlutusV2Script,
+    plutus_script_hash,
+    PlutusData,
+    AuxiliaryData,
+    AlonzoMetadata,
+    Metadata,
+    ExecutionUnits,
+)
 from chain_query import ChainQuery
 
 
 @dataclass
 class MintToken(PlutusData):
-    CONSTR_ID= 0
+    CONSTR_ID = 0
 
-class Mint():
 
-    def __init__(self,
-                    network: Network,
-                    context: ChainQuery,
-                    signing_key: PaymentSigningKey,
-                    verification_key: PaymentVerificationKey,
-                    plutus_v2_mint_script : PlutusV2Script
-                 ) -> None:
+class Mint:
+    def __init__(
+        self,
+        network: Network,
+        context: ChainQuery,
+        signing_key: PaymentSigningKey,
+        verification_key: PaymentVerificationKey,
+        plutus_v2_mint_script: PlutusV2Script,
+    ) -> None:
         self.network = network
         self.context = context
         self.signing_key = signing_key
@@ -27,7 +43,6 @@ class Mint():
         self.pub_key_hash = self.verification_key.hash()
         self.address = Address(payment_part=self.pub_key_hash, network=self.network)
         self.minting_script_plutus_v2 = plutus_v2_mint_script
-
 
     def mint_nft_with_script(self):
         """mint tokens with plutus v2 script"""
@@ -47,7 +62,7 @@ class Mint():
                 policy_id.payload.hex(): {
                     "Charli3": {
                         "description": "This is charli3 test tokens",
-                        "name": "Charli3"
+                        "name": "Charli3",
                     }
                 }
             }
@@ -64,8 +79,10 @@ class Mint():
 
         # Add minting script with an empty datum and a minting redeemer
         builder.add_minting_script(
-            self.minting_script_plutus_v2, redeemer=Redeemer(RedeemerTag.MINT, MintToken(),
-            ExecutionUnits(1000000, 300979640))
+            self.minting_script_plutus_v2,
+            redeemer=Redeemer(
+                RedeemerTag.MINT, MintToken(), ExecutionUnits(1000000, 300979640)
+            ),
         )
 
         # Set nft we want to mint
@@ -92,5 +109,6 @@ class Mint():
         builder.required_signers = [self.pub_key_hash]
 
         signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address)
+            [self.signing_key], change_address=self.address
+        )
         self.context.submit_tx_with_print(signed_tx)
