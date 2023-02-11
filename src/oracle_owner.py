@@ -332,9 +332,7 @@ class OracleOwner:
             builder = TransactionBuilder(self.context)
 
             (
-                builder.add_output(reference_script_utxo_output).add_input_address(
-                    self.address
-                )
+                builder.add_output(reference_script_utxo_output)
             )
 
             self.submit_tx_builder(builder)
