@@ -197,7 +197,7 @@ class Node:
         """build's partial node update_aggregate tx."""
         self.aggregate(rate=rate, update_node_output=True)
 
-    def collect(self):
+    def collect(self, reward_address: Address):
         """build's partial node collect tx."""
         oracle_utxos = self.context.utxos(str(self.oracle_addr))
         node_own_utxo = self.get_node_own_utxo(oracle_utxos)
@@ -221,7 +221,7 @@ class Node:
         (
             builder.add_script_input(node_own_utxo, redeemer=node_collect_redeemer)
             .add_output(tx_output)
-            .add_output(TransactionOutput(self.address, Value(2000000, c3_asset)))
+            .add_output(TransactionOutput(reward_address, Value(2000000, c3_asset)))
         )
 
         self.submit_tx_builder(builder)
