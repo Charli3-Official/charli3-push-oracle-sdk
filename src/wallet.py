@@ -28,36 +28,33 @@ def payment_address_24_base():
     stake_vk = PaymentVerificationKey.from_primitive(stake_public_key)
 
     extended_signing_key = ExtendedSigningKey.from_hdwallet(hdwallet_spend)
-    owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network=Network.TESTNET)
-    print(spend_vk.hash())
+    owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network=Network.MAINNET)
 
-    network = Network.TESTNET
+    network = Network.MAINNET
     context = ChainQuery(
-        "YOUR_TOKEN_ID_HERE",
+        "mainnetC1kgA6sHNIkRmjNA5jLCa8gUfKc8omBg",
         network,
-        base_url="https://cardano-preprod.blockfrost.io/api",
+        base_url="https://cardano-mainnet.blockfrost.io/api",
     )
 
-    oracle_addr = "addr_test1wz6jdu4f0eeamgzz2a8wt3eufux33nv6ju35z6r4de5rl0sncyqgh"
-    # oracle_script_hash = Address.from_primitive(oracle_addr).payment_part
-    # oracle_v2_script=context._get_script(oracle_script_hash)
-    print(owner_addr, type(owner_addr))
+    oracle_addr = "addr1wyd8cezjr0gcf8nfxuc9trd4hs7ec520jmkwkqzywx6l5jg0al0ya"
+    print(owner_addr)
     node_nft = MultiAsset.from_primitive(
-        {"2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20": {b"NodeFeed": 1}}
+        {"3d0d75aad1eb32f0ce78fb1ebc101b6b51de5d8f13c12daa88017624": {b"NodeFeed": 1}}
     )
     aggstate_nft = MultiAsset.from_primitive(
-        {"2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20": {b"AggState": 1}}
+        {"3d0d75aad1eb32f0ce78fb1ebc101b6b51de5d8f13c12daa88017624": {b"AggState": 1}}
     )
     oracle_nft = MultiAsset.from_primitive(
-        {"2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20": {b"OracleFeed": 1}}
+        {"3d0d75aad1eb32f0ce78fb1ebc101b6b51de5d8f13c12daa88017624": {b"OracleFeed": 1}}
     )
     minting_nft_hash = ScriptHash.from_primitive(
-        "2e527c8e42d0f28fd3f4025f60c0a89bc5815c8e2efc3fb973e3fc20"
+        "3d0d75aad1eb32f0ce78fb1ebc101b6b51de5d8f13c12daa88017624"
     )
     c3_token_hash = ScriptHash.from_primitive(
-        "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
+        "8e51398904a5d3fc129fbf4f1589701de23c7824d5c90fdb9490e15a"
     )
-    c3_token_name = AssetName(b"PAYMENTTOKEN")
+    c3_token_name = AssetName(b"CHARLI3")
 
     oracle_owner = OracleOwner(
         network,
@@ -74,30 +71,33 @@ def payment_address_24_base():
         stake_vk,
     )
 
-    ag_settings = OracleSettings(
+    agSettings = OracleSettings(
         os_node_list=[
-            b"\xda(\x13\x13t\x9a\xf2\x03\xe2\xb1\x19\xdf\x16\x89U\x17G\r\xd2Hd7 Kf\xb8\x83f",
-            b"\xed\x06\x9eV\xd4k\x12lJ\xaf\xcc\x19\x87\xf5\x06\x9b\xa6\x0b\x07p\xea\x85\x8e\x94\xac\x9a.\xc7",
-            b"7\x08\x03\x14\xef\xdawS\xfaN\xf1\xf8\xa1\x9e\xc9\xb7\xe9#v\xd0gx\xe1\x8dEk\x94m",
-            b'\xecL\x19\x94\xd7\x9d\x1a\x07\xf2o[\xd7\xab\xa2\x85\x8c\xd0<\r\x1f\x1f\x18\xcf\xd2\xcf"\xff`',
-            b"\xddc\xf5\xa0\xdd\xba\x85\x7f?\xe41\xfe+\xc1\xe7\x14v\xf44\xef0\xf8\xbe\xfc&\x1c\xf7\x16",
+            b"\xdbS\x98\xb3%\x04\x1d\xdf\xc6\xb0\xd4\xe5\xb6\ns\x8f\x04i(A~`+\xf7E\x8447",
+            b"6\x96\x19L\x8dm.\x12\x8f\xed\xb8&]P\xbde\x88\xd3\xe0\xe7\xfdG\x9c$IT\x00\x93",
+            b"\x19\xb9!\xcc\xad\x17\xa5\x05n\x1f\x0e\xb5u\xd4ex;\x8b\xbc\x8cQ\xa6\xf7\x1eO\x88\xc8\x0b",
+            b"u\xd8o\x9e\xc9\xa1\x17\x95Xh\xcb&\xda\xf2\x15\xcaM\xfb\x1bw\xfc)|\x8d\xb2\x16\xb2\xd4",
+            b"\x84\x02\xfc\x11\x8fi-S\xb27\xf00\x11\x05\xe0\x19\x1f\xbb\x9e\x85\xff\x9d\xe1\xe03\xc0\xbc\xc8",
         ],
-        os_updated_nodes=7500,
+        os_updated_nodes=6000,
         os_updated_node_time=3600000,
         os_aggregate_time=3600000,
-        os_aggregate_change=2000,
-        os_node_fee_price=NodeFee(getNodeFee=15000),
-        os_mad_multiplier=2000,
-        os_divergence=5000,
+        os_aggregate_change=200,
+        os_node_fee_price=NodeFee(getNodeFee=2580000),
+        os_mad_multiplier=20000,
+        os_divergence=1500,
     )
-    # oracle_owner.add_nodes([VerificationKeyHash.from_primitive("bd95d582888acda57a20256bb03e4c4abb6bdf09a47d788605412c53")])
-    # oracle_owner.add_nodes(["dd63f5a0ddba857f3fe431fe2bc1e71476f434ef30f8befc261cf716"])
+    # oracle_owner.add_nodes(["007df380aef26e44739db3f4fe67d8137446e630dab3df16d9fbddc5",
+    # "cef7fb5f89a9c76a65acdd746d9e84104d6f824d7dc44f427fcaa1dd",
+    # "4ad1571e7df63d4d6c49240c8372eb639f57c0ef669338c0d752f29b",
+    # "f6f69e5af37c2978cb2124c12202f2185fd5c14ee93bb832911daf8e",
+    # "2d7103fdaf4beecbbef37edc6d24d311230f2836d0af791e3a6364d2"])
     # oracle_owner.convert_datums_to_inlineable()
     # oracle_owner.create_reference_script()
-    # oracle_owner.remove_nodes(["1a550d5f572584e1add125b5712f709ac3b9828ad86581a4759022ba"])
-    oracle_owner.edit_settings(ag_settings)
+    # oracle_owner.remove_nodes(["49bd983d12353a48d39ad15212220ebd71dd3f897eb29ab89f3cb58e"])
+    # oracle_owner.edit_settings(agSettings)
     # context.create_collateral(owner_addr,extended_signing_key)
-    # oracle_owner.add_funds(70000000)
+    # oracle_owner.add_funds(229620000)
     # oracle_owner.oracle_close()
 
 
