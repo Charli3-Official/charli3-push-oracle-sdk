@@ -1,7 +1,7 @@
 """ Conditions for calculating aggregation."""
 from typing import Tuple, List
 from pycardano import IndefiniteList, UTxO
-from datums import (
+from src.datums import (
     OracleSettings,
     PriceFeed,
     PriceData,
@@ -10,7 +10,7 @@ from datums import (
     NodeDatum,
     Nothing,
 )
-from consensus import aggregation
+from src.consensus import aggregation
 
 factor_resolution: int = 10000
 
@@ -56,7 +56,6 @@ def check_feed_last_update(
         if (ofeed.price_data is None) or (
             dfeed.dfLastUpdate > ofeed.price_data.get_timestamp()
         ):
-
             node_update_range = (dfeed.dfLastUpdate, dfeed.dfLastUpdate + upd_node_time)
 
             if node_update_range[0] <= curr_time <= node_update_range[1]:

@@ -7,13 +7,12 @@ from pycardano import (
     PaymentSigningKey,
     PlutusV2Script,
 )
-from chain_query import ChainQuery
-from mint import Mint
+from src.chain_query import ChainQuery
+from src.mint import Mint
 
 network = Network.TESTNET
 context = ChainQuery(
     "YOUR_TOKEN_ID_HERE",
-    network,
     base_url="https://cardano-preprod.blockfrost.io/api",
 )
 

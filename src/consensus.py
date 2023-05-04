@@ -63,7 +63,7 @@ def aggregation(
         for i, feed in enumerate(feeds):
             if is_in_consensus(mad_multi, diver, mad, med, feed):
                 return feed, feeds[i:]
-            return 0, []
+        return 0, []
 
     def is_in_consensus(
         mad_multiplier: int, div: int, mad: int, med: int, d: int
@@ -83,7 +83,7 @@ def aggregation(
         """
         abs_diff = abs(med - d) * factor_resolution
         deviation = abs_diff // med
-        return (abs_diff <= mad_multiplier * mad) or (deviation < div)
+        return (abs_diff <= mad_multiplier * mad) and (deviation < div)
 
     s_feeds = sorted(feeds)
     med = int(median(s_feeds))

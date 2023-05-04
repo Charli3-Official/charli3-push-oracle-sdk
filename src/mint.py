@@ -19,7 +19,7 @@ from pycardano import (
     Metadata,
     ExecutionUnits,
 )
-from chain_query import ChainQuery
+from src.chain_query import ChainQuery
 
 
 @dataclass

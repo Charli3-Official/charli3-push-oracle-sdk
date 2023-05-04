@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pycardano import PlutusData
 
+
 @dataclass
 class NodeUpdate(PlutusData):
     CONSTR_ID = 0

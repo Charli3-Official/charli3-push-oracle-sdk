@@ -1,67 +1,27 @@
+""" This module contains the ChainQuery class, which is used to query the blockchain."""
 from typing import List
+from retry import retry
 from pycardano import (
     BlockFrostChainContext,
-    Network,
     TransactionBuilder,
     TransactionOutput,
     Transaction,
     UTxO,
-    RawCBOR,
 )
-from blockfrost import ApiUrls, BlockFrostApi, ApiError
-from blockfrost.utils import request_wrapper
-from datums import NodeDatum
-import os
-import requests
-from retry import retry
+from blockfrost import ApiError
+from src.datums import NodeDatum
 
 
-class BlockFrostDatumApi(BlockFrostApi):
-    def __init__(
-        self, project_id: str = None, base_url: str = None, api_version: str = None
-    ):
-        super().__init__(
-            project_id=project_id,
-            base_url=base_url
-            if base_url
-            else os.environ.get("BLOCKFROST_API_URL", default=ApiUrls.mainnet.value),
-            api_version=api_version,
-        )
+class ChainQuery:
+    """Class to query the blockchain."""
 
-    @request_wrapper
-    def script_datum_cbor(self, datum_hash: str, **kwargs):
-        """
-        Query cbor value of a datum by its hash.
-
-        https://docs.blockfrost.io/#tag/Cardano-Scripts/paths/~1scripts~1datum~1{datum_hash}/get
-
-        :param datum_hash: Hash of the datum.
-        :type datum_hash: str
-        :param return_type: Optional. "object", "json" or "pandas". Default: "object".
-        :type return_type: str
-        :returns object.
-        :rtype: Namespace
-        :raises ApiError: If API fails
-        :raises Exception: If the API response is somehow malformed.
-        """
-        return requests.get(
-            url=f"{self.url}/scripts/datum/{datum_hash}/cbor",
-            headers=self.default_headers,
-        )
-
-
-class ChainQuery(BlockFrostChainContext):
-    def __init__(
-        self, project_id: str, network: Network = Network.TESTNET, base_url: str = None
-    ):
-        super().__init__(project_id=project_id, network=network, base_url=base_url)
-        self.api = BlockFrostDatumApi(
-            project_id=self._project_id, base_url=self._base_url
-        )
+    def __init__(self, project_id: str, base_url: str = None):
+        self.context = BlockFrostChainContext(project_id=project_id, base_url=base_url)
 
     def _get_datum(self, utxo):
+        """get datum for UTxO"""
         if utxo.output.datum_hash is not None:
-            datum = self.api.script_datum_cbor(str(utxo.output.datum_hash)).cbor
+            datum = self.context.api.script_datum_cbor(str(utxo.output.datum_hash)).cbor
             return datum
         return None
 
@@ -86,22 +46,31 @@ class ChainQuery(BlockFrostChainContext):
                     result.append(utxo)
         return result
 
-    @retry(delay=10)
+    @retry(
+        delay=10,
+        tries=10,
+    )
     def wait_for_tx(self, tx_id):
-        self.api.transaction(tx_id)
+        """method to wait for a transaction to be included in the blockchain."""
+        self.context.api.transaction(tx_id)
         print(f"Transaction {tx_id} has been successfully included in the blockchain.")
 
     def submit_tx_with_print(self, tx: Transaction):
+        """method to submit a transaction and print the result."""
         print("############### Transaction created ###############")
         print(tx)
+        serialized_tx = tx.to_cbor("bytes")
+        tx_size = len(serialized_tx) / 1024
+        print(f"Transaction size: {tx_size:.2f} KB")
         print("############### Submitting transaction ###############")
-        self.submit_tx(tx.to_cbor())
+        response = self.context.submit_tx(tx.to_cbor())
+        print(f"Transaction response: {response}")
         self.wait_for_tx(str(tx.id))
 
     def find_collateral(self, target_address):
         """method to find collateral utxo."""
         try:
-            for utxo in self.utxos(str(target_address)):
+            for utxo in self.context.utxos(str(target_address)):
                 # A collateral should contain no multi asset
                 if not utxo.output.amount.multi_asset:
                     if utxo.output.amount < 10000000:
