@@ -7,12 +7,6 @@ This repository explores the use of pycardano in the Charli3 Oracle implementati
 - Python 3.10
 - This project uses Poetry to manage dependencies. If you don't have Poetry installed, you can install it by following the instructions at [Poetry documentation](https://python-poetry.org/docs/).
 
-To install the required Python packages, run:
-
-```
-poetry install
-```
-
 ### Installation
 1. Clone the repository:
 ```
