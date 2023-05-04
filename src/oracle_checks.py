@@ -7,9 +7,8 @@ from pycardano import (
     IndefiniteList,
     ScriptHash,
     AssetName,
-    VerificationKeyHash,
 )
-from datums import (
+from src.datums import (
     NodeDatum,
     NodeInfo,
     NodeState,

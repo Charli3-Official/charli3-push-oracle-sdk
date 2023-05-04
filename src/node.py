@@ -11,14 +11,13 @@ from pycardano import (
     TransactionOutput,
     TransactionBuilder,
     Redeemer,
-    RedeemerTag,
     Asset,
     MultiAsset,
     UTxO,
     ScriptHash,
     Value,
 )
-from datums import (
+from src.datums import (
     NodeDatum,
     NodeInfo,
     PriceFeed,
@@ -27,10 +26,10 @@ from datums import (
     OracleDatum,
     PriceData,
 )
-from redeemers import NodeUpdate, Aggregate, UpdateAndAggregate, NodeCollect
-from chain_query import ChainQuery
-from oracle_checks import check_utxo_asset_balance, get_oracle_utxos_with_datums
-from aggregate_conditions import aggregation_conditions
+from src.redeemers import NodeUpdate, Aggregate, UpdateAndAggregate, NodeCollect
+from src.chain_query import ChainQuery
+from src.oracle_checks import check_utxo_asset_balance, get_oracle_utxos_with_datums
+from src.aggregate_conditions import aggregation_conditions
 
 
 class Node:
@@ -73,7 +72,7 @@ class Node:
 
         node_own_utxo.output.datum.node_state.nodeFeed = new_node_feed
 
-        node_update_redeemer = Redeemer(RedeemerTag.SPEND, NodeUpdate())
+        node_update_redeemer = Redeemer(NodeUpdate())
 
         builder = TransactionBuilder(self.context)
 
@@ -109,7 +108,6 @@ class Node:
         if check_utxo_asset_balance(
             aggstate_utxo, self.c3_token_hash, self.c3_token_name, min_c3_required
         ):
-
             valid_nodes, agg_value = aggregation_conditions(
                 aggstate_datum.aggstate.agSettings,
                 oraclefeed_datum,
@@ -119,7 +117,6 @@ class Node:
             )
 
             if len(valid_nodes) > 0 and set(valid_nodes).issubset(set(nodes_utxos)):
-
                 c3_fees = len(valid_nodes) * single_node_fee
                 oracle_feed_expiry = (
                     curr_time_ms + aggstate_datum.aggstate.agSettings.os_aggregate_time
@@ -127,11 +124,10 @@ class Node:
 
                 if update_node_output:
                     aggregate_redeemer = Redeemer(
-                        RedeemerTag.SPEND,
                         UpdateAndAggregate(pub_key_hash=bytes(self.pub_key_hash)),
                     )
                 else:
-                    aggregate_redeemer = Redeemer(RedeemerTag.SPEND, Aggregate())
+                    aggregate_redeemer = Redeemer(Aggregate())
 
                 builder = TransactionBuilder(self.context)
 
@@ -214,7 +210,7 @@ class Node:
         tx_output = deepcopy(node_own_utxo.output)
         tx_output.amount.multi_asset -= c3_asset
 
-        node_collect_redeemer = Redeemer(RedeemerTag.SPEND, NodeCollect())
+        node_collect_redeemer = Redeemer(NodeCollect())
 
         builder = TransactionBuilder(self.context)
 
@@ -225,7 +221,6 @@ class Node:
         )
 
         self.submit_tx_builder(builder)
-
 
     def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx , sign and submit tx."""
@@ -244,7 +239,10 @@ class Node:
             builder.required_signers = [self.pub_key_hash]
 
             signed_tx = builder.build_and_sign(
-                [self.signing_key], change_address=self.address
+                [self.signing_key],
+                change_address=self.address,
+                auto_validity_start_offset=0,
+                auto_ttl_offset=60,
             )
             self.context.submit_tx_with_print(signed_tx)
         else:
@@ -264,7 +262,6 @@ class Node:
         if len(nodes_utxo) > 0:
             for utxo in nodes_utxo:
                 if utxo.output.datum:
-
                     if utxo.output.datum.cbor:
                         utxo.output.datum = NodeDatum.from_cbor(utxo.output.datum.cbor)
 
