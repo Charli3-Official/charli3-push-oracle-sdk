@@ -1,7 +1,10 @@
 # charli3-pycardano
 
 This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python.
-
+### Compatible charli3-oracle-prototype Branches
+- [main](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/main)
+- [full-validator-V2](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/full-validator-V2)
+- [full-validator-v2-optimizations](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/full-validator-v2-optimizations)
 ## Getting Started
 ### Prerequisites
 - Python 3.10
