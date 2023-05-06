@@ -34,7 +34,7 @@ class OracleStart:
     def __init__(
         self,
         network: Network,
-        context: ChainQuery,
+        chain_query: ChainQuery,
         signing_key: PaymentExtendedSigningKey,
         verification_key: PaymentVerificationKey,
         stake_key: PaymentVerificationKey,
@@ -45,7 +45,8 @@ class OracleStart:
         c3_token_name: AssetName,
     ) -> None:
         self.network = network
-        self.context = context
+        self.chain_query = chain_query
+        self.context = self.chain_query.context
         self.signing_key = signing_key
         self.verification_key = verification_key
         self.stake_key = stake_key
@@ -70,7 +71,7 @@ class OracleStart:
     def start_oracle(self, initial_c3_amount: int):
         """Start oracle"""
         # Create a locking script that hold oracle script and also mints oracle NFT
-        oracle_owner = OwnerScript(self.network, self.context, self.verification_key)
+        oracle_owner = OwnerScript(self.network, self.chain_query, self.verification_key)
         owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
         owner_script_hash = owner_script.hash()
         c3_asset = MultiAsset(
@@ -169,11 +170,11 @@ class OracleStart:
             raise Exception("Unable to find or create collateral.")
 
     def _get_or_create_collateral(self):
-        non_nft_utxo = self.context.find_collateral(self.address)
+        non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         if non_nft_utxo is None:
-            self.context.create_collateral(self.address, self.signing_key)
-            non_nft_utxo = self.context.find_collateral(self.address)
+            self.chain_query.create_collateral(self.address, self.signing_key)
+            non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         return non_nft_utxo
 
@@ -185,7 +186,7 @@ class OracleStart:
         )
 
         try:
-            self.context.submit_tx_with_print(signed_tx)
+            self.chain_query.submit_tx_with_print(signed_tx)
             print("Transaction submitted successfully.")
         except Exception as err:
             print("Error submitting transaction: ", err)

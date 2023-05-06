@@ -15,7 +15,7 @@ from src.chain_query import ChainQuery
 MNEMONIC_24 = ""
 
 network = Network.MAINNET
-context = ChainQuery(
+chain_query = ChainQuery(
     "mainnetC1kgA6sHNIkRmjNA5jLCa8gUfKc8omBg",
     base_url="https://cardano-mainnet.blockfrost.io/api",
 )
@@ -33,7 +33,7 @@ def send_ada_to(addresses: List[str], amount: int):
     sender_address = Address(sender_pub_key_hash, network=network)
     topup_amount = amount * 1000000
 
-    builder = TransactionBuilder(context=context)
+    builder = TransactionBuilder(context=chain_query.context)
 
     for address in addresses:
         builder.add_output(
@@ -47,7 +47,7 @@ def send_ada_to(addresses: List[str], amount: int):
         signing_keys=[sender_signing_key],
         change_address=sender_address,
     )
-    context.submit_tx_with_print(signed_tx)
+    chain_query.submit_tx_with_print(signed_tx)
     print(f"Sent {amount} ada to {len(addresses)} addresses")
 
 

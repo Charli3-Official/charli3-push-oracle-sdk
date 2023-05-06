@@ -17,11 +17,12 @@ class OwnerScript:
     def __init__(
         self,
         network: Network,
-        context: ChainQuery,
+        chain_query: ChainQuery,
         owner_verification_key: PaymentVerificationKey,
     ) -> None:
         self.network = network
-        self.context = context
+        self.chain_query = chain_query
+        self.context = self.chain_query.context
         self.owner_verification_key = owner_verification_key
         self.owner_pub_key_hash = self.owner_verification_key.hash()
 
