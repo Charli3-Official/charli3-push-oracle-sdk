@@ -10,13 +10,13 @@ from pycardano import (
 )
 from src.datums import (
     NodeDatum,
-    NodeInfo,
     NodeState,
     OracleDatum,
     AggDatum,
     AggState,
     PriceFeed,
     Nothing,
+    RewardDatum,
 )
 
 
@@ -46,7 +46,7 @@ def filter_utxos_by_datum_hash(utxos: List[UTxO], datum_hash: DatumHash):
     return result
 
 
-def filter_node_datums_by_node_info(node_datums: List[NodeDatum], node_info: NodeInfo):
+def filter_node_datums_by_node_info(node_datums: List[NodeDatum], node_info: bytes):
     """filter node datums by node info"""
     if len(node_datums) > 0:
         for datum in node_datums:
@@ -56,7 +56,7 @@ def filter_node_datums_by_node_info(node_datums: List[NodeDatum], node_info: Nod
     return None
 
 
-def filter_node_utxos_by_node_info(utxos: List[UTxO], node_info: NodeInfo) -> UTxO:
+def filter_node_utxos_by_node_info(utxos: List[UTxO], node_info: bytes) -> UTxO:
     """Filter node UTxOs by node info.
 
     Args:
@@ -98,7 +98,7 @@ def check_node_exists(node_list: IndefiniteList, node: bytes) -> bool:
 
 
 def get_node_own_utxo(
-    oracle_utxos: List[UTxO], node_nft: MultiAsset, node_info: NodeInfo
+    oracle_utxos: List[UTxO], node_nft: MultiAsset, node_info: bytes
 ) -> UTxO:
     """returns node's own utxo from list of oracle UTxOs"""
     nodes_utxos = filter_utxos_by_asset(oracle_utxos, node_nft)
@@ -206,7 +206,8 @@ def get_oracle_utxos_with_datums(
     aggstate_nft: MultiAsset,
     oracle_nft: MultiAsset,
     node_nft: MultiAsset,
-) -> Tuple[UTxO, UTxO, List[UTxO]]:
+    reward_nft: MultiAsset,
+) -> Tuple[UTxO, UTxO, List[UTxO], UTxO]:
     """
     Given a list of UTxOs, filters them by asset and converts the data to the appropriate datum object.
 
@@ -215,10 +216,11 @@ def get_oracle_utxos_with_datums(
         - aggstate_nft (MultiAsset): The asset used to filter the UTxOs for the AggDatum object.
         - oracle_nft (MultiAsset): The asset used to filter the UTxOs for the OracleDatum object.
         - node_nft (MultiAsset): The asset used to filter the UTxOs for the NodeDatum objects.
+        - reward_nft (MultiAsset): The asset used to filter the UTxOs for the RewardDatum object.
 
     Returns:
-        Tuple[UTxO, UTxO, List[UTxO]] : A tuple containing the filtered and converted UTxOs for the
-        AggDatum, OracleDatum, and NodeDatum objects.
+        Tuple[UTxO, UTxO, List[UTxO], UTxO] : A tuple containing the filtered and converted UTxOs for the
+        AggDatum, OracleDatum, NodeDatum and RewardDatum UTxOs.
     """
     aggstate_utxo = next(
         (
@@ -230,6 +232,10 @@ def get_oracle_utxos_with_datums(
     )
     oraclefeed_utxo = next(
         (utxo for utxo in oracle_utxos if utxo.output.amount.multi_asset >= oracle_nft),
+        None,
+    )
+    reward_utxo = next(
+        (utxo for utxo in oracle_utxos if utxo.output.amount.multi_asset >= reward_nft),
         None,
     )
     nodes_utxos = [
@@ -253,4 +259,20 @@ def get_oracle_utxos_with_datums(
     except Exception:
         print("Invalid CBOR data for OracleDatum")
 
-    return (oraclefeed_utxo, aggstate_utxo, node_utxos_with_datum)
+    try:
+        if reward_utxo.output.datum:
+            reward_utxo.output.datum = RewardDatum.from_cbor(
+                reward_utxo.output.datum.cbor
+            )
+    except Exception:
+        print("Invalid CBOR data for RewardDatum")
+
+    return (oraclefeed_utxo, aggstate_utxo, node_utxos_with_datum, reward_utxo)
+
+
+def check_type(value, expected_type, name):
+    """Check if value is of expected type, raise TypeError if not."""
+    if not isinstance(value, expected_type):
+        raise TypeError(
+            f"{name} must be of type {expected_type.__name__}, got {type(value).__name__}"
+        )

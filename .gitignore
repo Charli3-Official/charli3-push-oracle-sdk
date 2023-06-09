@@ -166,4 +166,8 @@ debug.py
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .vscode
+# config files
+oracle_deploy.yml
+oracle-owner-actions.yml
+run-node-simulator.yml
 # End of https://www.toptal.com/developers/gitignore/api/python

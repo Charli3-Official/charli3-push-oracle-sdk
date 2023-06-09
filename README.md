@@ -3,8 +3,7 @@
 This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python.
 ### Compatible charli3-oracle-prototype Branches
 - [main](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/main)
-- [full-validator-V2](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/full-validator-V2)
-- [full-validator-v2-optimizations](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/full-validator-v2-optimizations)
+
 ## Getting Started
 ### Prerequisites
 - Python 3.10
@@ -23,6 +22,107 @@ cd charli3-pycardano
 ```
 poetry install
 ```
+
+# Oracle Deployment Guide
+
+This guide walks you through the steps to deploy an oracle on the Cardano blockchain using Python.
+
+## Create the configuration file
+Create a oracle_deploy.yml file in the root directory of the project. This file contains the configuration needed to deploy the oracle. Fill it with your specific values.
+
+Here is an example of what it should look like: [sample-oracle-deploy.yml](sample-oracle-deploy.yml)
+
+## Run the oracle deployment script
+Finally, you can deploy the oracle by running the main script.
+```bash
+python3 scripts/oracle_deploy.py 
+```
+Remember to the `oracle_deploy.yml` file should be filled with your own values for the oracle. The mnemonic should be your 24-word mnemonic for your wallet, and other values should match your specific use-case and the state of the Cardano blockchain at the time of deployment.
+
+**Note: Currently Supported Derivation Path For Mnemonic**
+
+The backend of this application currently supports the default initial path, which is the standard path used when setting up a new wallet. The derivation path "m/1852'/1815'/0'/0/0" is employed to generate the necessary keys and addresses.
+
+# Oracle Owner CLI
+This repository provides a command line interface (CLI) for managing oracle owner actions.
+``` bash
+$ python3 scripts/oracle_owner_actions.py --help
+Usage: oracle_owner_actions.py [OPTIONS] COMMAND [ARGS]...
+
+  A CLI for managing the oracle owner actions.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  add-funds                Add funds to the oracle.
+  add-nodes                Add nodes to the oracle interactively.
+  create-reference-script  Create the reference script.
+  edit-settings            Interactively edit the oracle settings.
+  oracle-close             Close the oracle.
+  platform-collect         Collect the oracle's platform rewards.
+  remove-nodes             Remove nodes from the oracle interactively.
+```
+## How to Use
+The CLI is built with Python and uses Click library to manage the commands.
+
+You can use the CLI to perform actions like adding nodes, removing nodes, adding funds, and editing settings of the oracle.
+
+Before running the CLI, you will need to set up your configuration in the [oracle-owner-actions.yml](sample-oracle-owner-actions.yml) file.
+
+Below are the available commands:
+
+1. `add-funds`: Interactively adds nodes to the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
+        
+    ```bash
+    python scripts/oracle_owner_actions.py add-funds
+    ```
+2. `remove-nodes`: Interactively removes nodes from the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
+    
+    Limitation : Make sure Wallet doesn't have C3 tokens or spceifically tx doesn't output C3 tokens while building, The validator checks for payment tokens (C3) Output and if it's more than the node rewards amount it will fail.
+    ```
+    python scripts/oracle_owner_actions.py remove-nodes
+    ```
+3. `add-funds`: Adds funds to the oracle with Integer Arg.
+    
+    ``` 
+    python scripts/oracle_owner_actions.py add-funds 500
+    ```
+4. `oracle-close`: Closes the oracle.
+
+    ```
+    python scripts/oracle_owner_actions.py oracle-close
+    ```
+    
+5. `platform-collect`: Collects the oracle's platform rewards.
+
+    ```
+    python scripts/oracle_owner_actions.py platform-collect
+    ```
+
+6. `create-reference-script`: Creates the reference script UTxO.
+
+    ```
+    python scripts/oracle_owner_actions.py create-reference-script
+    ```
+
+7. `edit-settings`: Interactively edit the oracle settings. The program will prompt you to enter the number corresponding to the setting you want to change, and then the new value for that setting. To finish and apply changes, enter 'q'.
+
+    ```
+    python scripts/oracle_owner_actions.py edit-settings
+    ```
+
+
+# Run Nodes Simulator
+
+## Setup & Execution
+1. Before running the CLI, you will need to set up your configuration in the [run-node-simulator.yml](sample-run-node-simulator.yml) file.
+2. Update the updates list in the yaml with your own mnemonic phrases and update values.
+3. Run the script by typing 
+   ```
+    python scripts/run_simulation.py
+    ```
+4. The script will print the public key hash of each node it creates, perform the updates for each node, aggregate the oracle with last node, and collect reward for each node with a 20-second delay between each collection.
 
 ## Modules
 ### Minting Tokens

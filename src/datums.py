@@ -1,18 +1,14 @@
 """Datums implementation"""
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Union, List, Optional
 from pycardano import PlutusData
 from pycardano.serialization import IndefiniteList
 
 
 @dataclass
-class NodeInfo(PlutusData):
-    CONSTR_ID = 0
-    niNodeOperator: bytes
-
-
-@dataclass
 class DataFeed(PlutusData):
+    """represents Data Feed of Node State"""
+
     CONSTR_ID = 0
     dfValue: int
     dfLastUpdate: int
@@ -20,12 +16,16 @@ class DataFeed(PlutusData):
 
 @dataclass
 class PriceFeed(PlutusData):
+    """represents Price Feed of Node State"""
+
     CONSTR_ID = 0
     df: DataFeed
 
 
 @dataclass
 class Nothing(PlutusData):
+    """represents Nothing of Node State"""
+
     CONSTR_ID = 1
 
 
@@ -60,7 +60,7 @@ class NodeState(PlutusData):
     """represents Node State of Node Datum"""
 
     CONSTR_ID = 0
-    nodeOperator: NodeInfo
+    nodeOperator: bytes
     nodeFeed: Union[PriceFeed, Nothing]
 
 
@@ -74,14 +74,20 @@ class NodeDatum(PlutusData):
 
 @dataclass
 class OracleDatum(PlutusData):
+    """Oracle Datum"""
+
     CONSTR_ID = 0
-    price_data: PriceData = field(default=None, metadata={"optional": True})
+    price_data: Optional[PriceData] = field(default=None, metadata={"optional": True})
 
 
 @dataclass
-class NodeFee(PlutusData):
+class PriceRewards(PlutusData):
+    """Node Fee parameters"""
+
     CONSTR_ID = 0
-    getNodeFee: int
+    node_fee: int
+    aggregate_fee: int
+    platform_fee: int
 
 
 @dataclass
@@ -94,9 +100,10 @@ class OracleSettings(PlutusData):
     os_updated_node_time: int
     os_aggregate_time: int
     os_aggregate_change: int
-    os_node_fee_price: NodeFee
+    os_node_fee_price: PriceRewards
     os_mad_multiplier: int
     os_divergence: int
+    os_platform_pkh: bytes
 
     def required_nodes_num(self, percent_resolution: int = 10000) -> int:
         """Number of nodes required"""
@@ -106,16 +113,48 @@ class OracleSettings(PlutusData):
 
 @dataclass
 class AggState(PlutusData):
+    """Agg State parameters"""
+
     CONSTR_ID = 0
     agSettings: OracleSettings
 
 
 @dataclass
 class AggDatum(PlutusData):
+    """Agg Datum"""
+
     CONSTR_ID = 2
     aggstate: AggState
 
 
 @dataclass
 class InitialOracleDatum(PlutusData):
+    """Initial Oracle Datum"""
+
     CONSTR_ID = 0
+
+
+@dataclass
+class RewardInfo(PlutusData):
+    """Reward Info parameters"""
+
+    CONSTR_ID = 0
+    reward_address: bytes
+    reward_amount: int
+
+
+@dataclass
+class OracleReward(PlutusData):
+    """Oracle Reward parameters"""
+
+    CONSTR_ID = 0
+    node_reward_list: List[RewardInfo]
+    platform_reward: RewardInfo
+
+
+@dataclass
+class RewardDatum(PlutusData):
+    """Oracle Reward Datum"""
+
+    CONSTR_ID = 3
+    reward_state: OracleReward
