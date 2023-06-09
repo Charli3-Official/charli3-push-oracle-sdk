@@ -59,18 +59,18 @@ class ChainQuery:
         """method to submit a transaction and print the result."""
         print("############### Transaction created ###############")
         print(tx)
-        serialized_tx = tx.to_cbor("bytes")
+        serialized_tx = tx.to_cbor()
         tx_size = len(serialized_tx) / 1024
         print(f"Transaction size: {tx_size:.2f} KB")
         print("############### Submitting transaction ###############")
-        response = self.context.submit_tx(tx.to_cbor())
+        response = self.context.submit_tx(tx)
         print(f"Transaction response: {response}")
         self.wait_for_tx(str(tx.id))
 
     def find_collateral(self, target_address):
         """method to find collateral utxo."""
         try:
-            for utxo in self.context.utxos(str(target_address)):
+            for utxo in self.context.utxos(target_address):
                 # A collateral should contain no multi asset
                 if not utxo.output.amount.multi_asset:
                     if utxo.output.amount < 10000000:
@@ -91,7 +91,7 @@ class ChainQuery:
     def create_collateral(self, target_address, skey):
         """create collateral utxo"""
         print("creating collateral UTxO.")
-        collateral_builder = TransactionBuilder(self)
+        collateral_builder = TransactionBuilder(self.context)
 
         collateral_builder.add_input_address(target_address)
         collateral_builder.add_output(TransactionOutput(target_address, 5000000))

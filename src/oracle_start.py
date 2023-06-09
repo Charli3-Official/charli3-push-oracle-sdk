@@ -13,16 +13,19 @@ from pycardano import (
     ScriptHash,
     AssetName,
     Asset,
+    IndefiniteList,
 )
 from src.datums import (
     NodeDatum,
     OracleDatum,
     AggDatum,
     NodeState,
-    NodeInfo,
     OracleSettings,
     AggState,
     Nothing,
+    RewardDatum,
+    OracleReward,
+    RewardInfo,
 )
 from src.chain_query import ChainQuery
 from src.owner_script import OwnerScript
@@ -108,6 +111,7 @@ class OracleStart:
                     ),  # Negative sign indicates burning
                     b"AggState": 1,
                     b"OracleFeed": 1,
+                    b"Reward": 1,
                 }
             }
         )
@@ -121,14 +125,19 @@ class OracleStart:
         aggstate_nft = MultiAsset.from_primitive(
             {owner_script_hash.payload: {b"AggState": 1}}
         )
+        reward_nft = MultiAsset.from_primitive(
+            {owner_script_hash.payload: {b"Reward": 1}}
+        )
         # Set native script
         builder.native_scripts = [owner_script]
 
+        node_reward_list = []
         # Prepare each datum
         for node in self.node_pkh_list:
             node_datum = NodeDatum(
-                node_state=NodeState(nodeOperator=NodeInfo(node), nodeFeed=Nothing())
+                node_state=NodeState(nodeOperator=node, nodeFeed=Nothing())
             )
+            node_reward_list.append(RewardInfo(reward_address=node, reward_amount=0))
             node_output = TransactionOutput(
                 self.oracle_address,
                 Value(2000000, single_node_nft),
@@ -146,6 +155,7 @@ class OracleStart:
         builder.add_output(oracle_output)
 
         # Prepare aggstate datum
+        self.oracle_settings.os_node_list = IndefiniteList(self.oracle_settings.os_node_list)
         aggstate_datum = AggDatum(aggstate=AggState(agSettings=self.oracle_settings))
         aggstate_output = TransactionOutput(
             self.oracle_address,
@@ -153,6 +163,19 @@ class OracleStart:
             datum=aggstate_datum,
         )
         builder.add_output(aggstate_output)
+
+        # Prepare reward datum
+        reward_datum = RewardDatum(reward_state=OracleReward(
+            node_reward_list=node_reward_list,
+            platform_reward= RewardInfo(bytes(self.oracle_settings.os_platform_pkh), 0),
+        ))
+        reward_output = TransactionOutput(
+            self.oracle_address,
+            Value(3000000, reward_nft),
+            datum=reward_datum,
+        )
+        builder.add_output(reward_output)
+
         self.submit_tx_builder(builder)
 
     def _process_common_inputs(self, builder: TransactionBuilder):

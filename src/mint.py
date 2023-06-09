@@ -8,7 +8,6 @@ from pycardano import (
     TransactionOutput,
     TransactionBuilder,
     Redeemer,
-    RedeemerTag,
     Value,
     MultiAsset,
     PlutusV2Script,
@@ -31,13 +30,14 @@ class Mint:
     def __init__(
         self,
         network: Network,
-        context: ChainQuery,
+        chain_query: ChainQuery,
         signing_key: PaymentSigningKey,
         verification_key: PaymentVerificationKey,
         plutus_v2_mint_script: PlutusV2Script,
     ) -> None:
         self.network = network
-        self.context = context
+        self.chain_query = chain_query
+        self.context = self.chain_query.context
         self.signing_key = signing_key
         self.verification_key = verification_key
         self.pub_key_hash = self.verification_key.hash()
@@ -80,9 +80,7 @@ class Mint:
         # Add minting script with an empty datum and a minting redeemer
         builder.add_minting_script(
             self.minting_script_plutus_v2,
-            redeemer=Redeemer(
-                RedeemerTag.MINT, MintToken(), ExecutionUnits(1000000, 300979640)
-            ),
+            redeemer=Redeemer(MintToken(), ExecutionUnits(1000000, 300979640)),
         )
 
         # Set nft we want to mint
@@ -99,11 +97,11 @@ class Mint:
 
     def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx , sign and submit tx."""
-        non_nft_utxo = self.context.find_collateral(self.address)
+        non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         if non_nft_utxo is None:
-            self.context.create_collateral(self.address, self.signing_key)
-            non_nft_utxo = self.context.find_collateral(self.address)
+            self.chain_query.create_collateral(self.address, self.signing_key)
+            non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         builder.collaterals.append(non_nft_utxo)
         builder.required_signers = [self.pub_key_hash]
@@ -111,4 +109,4 @@ class Mint:
         signed_tx = builder.build_and_sign(
             [self.signing_key], change_address=self.address
         )
-        self.context.submit_tx_with_print(signed_tx)
+        self.chain_query.submit_tx_with_print(signed_tx)

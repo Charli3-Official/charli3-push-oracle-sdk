@@ -1,0 +1,12 @@
+MNEMONIC_24: "your mnemonic here"
+network: "testnet"
+chain_query:
+  token_id: "YOUR_TOKEN_ID_HERE"
+  base_url: "https://cardano-preprod.blockfrost.io/api"
+
+oracle_owner:
+  oracle_addr: "addr_test1wp6kt5etqmudy6pwhdp8g97ydt47w9znthu7ws9ar0rmptgkn2qzy"
+  minting_nft_hash: "1f2d9f081287bc0b89ca08c088e3fa20a7719b8b954e4993539fde17"
+  c3_token_hash: "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
+  c3_token_name: "PAYMENTTOKEN"
+  script_start_slot: 28585322
