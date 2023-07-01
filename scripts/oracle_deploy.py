@@ -1,6 +1,10 @@
 """Deploy oracle on Cardano blockchain"""
-import yaml
+import zipfile
+import os
+import subprocess
+import json
 import cbor2
+import yaml
 from pycardano import (
     Network,
     HDWallet,
@@ -15,6 +19,89 @@ from src.chain_query import ChainQuery
 from src.owner_script import OwnerScript
 from src.oracle_start import OracleStart
 from src.datums import OracleSettings, PriceRewards
+
+
+def generate_validator_arguments(file_name, arguments):
+    """Generate the validator arguments in YAML format"""
+    str_arguments = {
+        key: value.to_string() if hasattr(value, "to_string") else str(value)
+        for key, value in arguments.items()
+    }
+    with open(file_name, "w") as file:
+        yaml.dump(str_arguments, file)
+
+
+def unzip_and_execute_binary(
+    file_name,
+    unzip_dir,
+    binary_name,
+    owner_ppkh,
+    oracle_mp,
+    payment_mp,
+    payment_tn,
+    args=None,
+) -> PlutusV2Script:
+    """Unzip the binary file and execute it and return the Plutus script"""
+
+    # Unzip the file
+    with zipfile.ZipFile(file_name, "r") as zip_ref:
+        zip_ref.extractall(unzip_dir)
+
+    # Generate the YAML file
+    validator_arguments = {
+        "file_name": "OracleV3",
+        "owner_ppkh": owner_ppkh,
+        "oracle_mp": oracle_mp,
+        "aggState_tn": "AggState",
+        "reward_tn": "Reward",
+        "oracleFeed_tn": "OracleFeed",
+        "nodeFeed_tn": "NodeFeed",
+        "payment_mp": payment_mp,
+        "payment_tn": payment_tn,
+    }
+    generate_validator_arguments(
+        os.path.join(os.getcwd(), "validator-argument.yml"), validator_arguments
+    )
+
+    # Make the binary executable
+    binary_file_path = os.path.join(unzip_dir, binary_name)
+    os.chmod(binary_file_path, 0o755)
+
+    # Prepare the command and arguments
+    command = [binary_file_path]
+    if args:
+        command.extend(args)
+
+    # Execute the binary
+    process = subprocess.Popen(command)
+    output, error = process.communicate()
+
+    # If you want to print the output
+    if output:
+        print("Output: ", output)
+
+    if error:
+        print("Error: ", error)
+
+    # Remove the YAML file and the binary
+    os.remove(os.path.join(os.getcwd(), "validator-argument.yml"))
+    os.remove(binary_file_path)
+
+    # Load the Plutus script file
+    with open("OracleV3.plutus", "r") as f:
+        plutus_data = json.load(f)
+
+    # Get the "cborHex" from the Plutus script file
+    script_hex = plutus_data.get("cborHex")
+
+    # Convert the "cborHex" to PlutusScriptV2
+    plutus_script = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
+
+    # Remove the Plutus script file
+    os.remove("OracleV3.plutus")
+
+    return plutus_script
+
 
 if __name__ == "__main__":
     # Load configuration from YAML file
@@ -52,9 +139,17 @@ if __name__ == "__main__":
     c3_token_name = AssetName(config["c3_token_name"].encode())
     print(owner_addr)
     print(owner_minting_script.print_start_params(script_start_slot))
-    with open(config["plutus_file_name"], "r") as f:
-        script_hex = f.read()
-        oracle_script = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
+
+    oracle_script = unzip_and_execute_binary(
+        file_name="binary/serialized.zip",
+        unzip_dir="binary",
+        binary_name="serialized",
+        owner_ppkh=owner_addr.payment_part,
+        oracle_mp=native_script.hash(),
+        payment_mp=c3_token_hash,
+        payment_tn=config["c3_token_name"],
+        args=["-a", "-v"],
+    )
 
     # Oracle settings
     agSettings = OracleSettings(
