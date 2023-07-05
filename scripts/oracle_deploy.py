@@ -15,10 +15,10 @@ from pycardano import (
     AssetName,
     PlutusV2Script,
 )
-from src.chain_query import ChainQuery
-from src.owner_script import OwnerScript
-from src.oracle_start import OracleStart
-from src.datums import OracleSettings, PriceRewards
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.oracle_start import OracleStart
+from charli3_offchain_core.datums import OracleSettings, PriceRewards
 
 
 def generate_validator_arguments(file_name, arguments):

@@ -11,10 +11,10 @@ from pycardano import (
     ExtendedSigningKey,
     HDWallet,
 )
-from src.datums import *
-from src.redeemers import *
-from src.chain_query import ChainQuery
-from src.node import Node
+from charli3_offchain_core.datums import *
+from charli3_offchain_core.redeemers import *
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.node import Node
 
 with open("run-node-simulator.yml", "r") as stream:
     config = yaml.safe_load(stream)

@@ -9,7 +9,7 @@ from pycardano import (
     UTxO,
 )
 from blockfrost import ApiError
-from src.datums import NodeDatum
+from charli3_offchain_core.datums import NodeDatum
 
 
 class ChainQuery:
