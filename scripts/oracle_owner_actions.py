@@ -12,9 +12,9 @@ from pycardano import (
     AssetName,
 )
 
-from src.chain_query import ChainQuery
-from src.oracle_owner import OracleOwner
-from src.owner_script import OwnerScript
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.oracle_owner import OracleOwner
+from charli3_offchain_core.owner_script import OwnerScript
 
 
 @click.group(invoke_without_command=True)

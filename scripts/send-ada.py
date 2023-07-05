@@ -9,7 +9,7 @@ from pycardano import (
     TransactionBuilder,
     TransactionOutput,
 )
-from src.chain_query import ChainQuery
+from charli3_offchain_core.chain_query import ChainQuery
 
 # Add your mnemonic here
 MNEMONIC_24 = ""

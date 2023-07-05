@@ -1,7 +1,7 @@
 """ Conditions for calculating aggregation."""
 from typing import Tuple, List
 from pycardano import IndefiniteList, UTxO
-from src.datums import (
+from charli3_offchain_core.datums import (
     OracleSettings,
     PriceFeed,
     PriceData,
@@ -10,7 +10,7 @@ from src.datums import (
     NodeDatum,
     Nothing,
 )
-from src.consensus import aggregation
+from charli3_offchain_core.consensus import aggregation
 
 factor_resolution: int = 10000
 

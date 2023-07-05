@@ -7,8 +7,8 @@ from pycardano import (
     PaymentSigningKey,
     PlutusV2Script,
 )
-from src.chain_query import ChainQuery
-from src.mint import Mint
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.mint import Mint
 
 network = Network.TESTNET
 context = ChainQuery(

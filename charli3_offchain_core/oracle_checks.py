@@ -8,7 +8,7 @@ from pycardano import (
     ScriptHash,
     AssetName,
 )
-from src.datums import (
+from charli3_offchain_core.datums import (
     NodeDatum,
     NodeState,
     OracleDatum,

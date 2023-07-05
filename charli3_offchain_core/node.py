@@ -17,7 +17,7 @@ from pycardano import (
     ScriptHash,
     Value,
 )
-from src.datums import (
+from charli3_offchain_core.datums import (
     NodeDatum,
     PriceFeed,
     DataFeed,
@@ -28,10 +28,10 @@ from src.datums import (
     RewardInfo,
     OracleReward,
 )
-from src.redeemers import NodeUpdate, Aggregate, NodeCollect
-from src.chain_query import ChainQuery
-from src.oracle_checks import check_utxo_asset_balance, get_oracle_utxos_with_datums
-from src.aggregate_conditions import aggregation_conditions
+from charli3_offchain_core.redeemers import NodeUpdate, Aggregate, NodeCollect
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.oracle_checks import check_utxo_asset_balance, get_oracle_utxos_with_datums
+from charli3_offchain_core.aggregate_conditions import aggregation_conditions
 
 
 class Node:
