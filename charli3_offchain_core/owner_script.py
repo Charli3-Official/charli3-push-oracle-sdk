@@ -8,7 +8,7 @@ from pycardano import (
     NativeScript,
     InvalidBefore,
 )
-from src.chain_query import ChainQuery
+from charli3_offchain_core.chain_query import ChainQuery
 
 
 class OwnerScript:

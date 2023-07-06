@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "src"
+name = "charli3-offchain-core"
 version = "0.1.0"
-description = "Experiments with Pycardano lib."
+description = "Offchain core Python package for Charli3"
 authors = ["Deep Bhatt <deep.bhatt@charli3.io>"]
 readme = "README.md"
 

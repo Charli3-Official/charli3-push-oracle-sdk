@@ -15,7 +15,7 @@ from pycardano import (
     Asset,
     IndefiniteList,
 )
-from src.datums import (
+from charli3_offchain_core.datums import (
     NodeDatum,
     OracleDatum,
     AggDatum,
@@ -27,8 +27,8 @@ from src.datums import (
     OracleReward,
     RewardInfo,
 )
-from src.chain_query import ChainQuery
-from src.owner_script import OwnerScript
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.owner_script import OwnerScript
 
 
 class OracleStart:

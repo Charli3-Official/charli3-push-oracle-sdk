@@ -18,7 +18,7 @@ from pycardano import (
     Metadata,
     ExecutionUnits,
 )
-from src.chain_query import ChainQuery
+from charli3_offchain_core.chain_query import ChainQuery
 
 
 @dataclass
