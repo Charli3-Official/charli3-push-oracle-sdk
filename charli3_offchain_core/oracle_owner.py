@@ -24,7 +24,7 @@ from pycardano import (
     TransactionInput,
 )
 from pycardano.exception import InsufficientUTxOBalanceException, UTxOSelectionException
-from src.datums import (
+from charli3_offchain_core.datums import (
     NodeDatum,
     AggDatum,
     OracleSettings,
@@ -35,7 +35,7 @@ from src.datums import (
     RewardDatum,
     RewardInfo,
 )
-from src.redeemers import (
+from charli3_offchain_core.redeemers import (
     UpdateSettings,
     MintToken,
     OracleClose,
@@ -43,14 +43,14 @@ from src.redeemers import (
     AddNodes,
     RemoveNodes,
 )
-from src.chain_query import ChainQuery
-from src.oracle_checks import (
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.oracle_checks import (
     filter_utxos_by_asset,
     check_node_exists,
     get_node_own_utxo,
     check_type,
 )
-from src.utils.exceptions import CollateralException
+from charli3_offchain_core.utils.exceptions import CollateralException
 
 
 class OracleOwner:
