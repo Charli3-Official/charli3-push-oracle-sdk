@@ -101,6 +101,8 @@ class OracleStart:
         print(f"Locking script address: {owner_script_addr}")
         print(f"Oracle script address: {self.oracle_address}")
 
+        print(self.context.utxos(self.address))
+
         # Reference script output
         reference_script_utxo = TransactionOutput(
             address=self.oracle_address, amount=60000000, script=self.oracle_script

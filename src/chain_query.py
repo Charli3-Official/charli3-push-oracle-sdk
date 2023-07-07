@@ -1,5 +1,6 @@
 """ This module contains the ChainQuery class, which is used to query the blockchain."""
 import logging
+import asyncio
 
 from typing import List
 from retry import retry
@@ -67,10 +68,13 @@ class ChainQuery:
 
         async def _wait_for_tx(context, tx_id, check_fn):
             """Wait for a transaction to be confirmed."""
-            response = await check_fn(context, tx_id)
-            if response:
-                logger.info("Transaction submitted with tx_id: %s", str(tx_id))
-                return response
+            while True:
+                response = await check_fn(context, tx_id)
+                if response:
+                    logger.info("Transaction submitted with tx_id: %s", str(tx_id))
+                    return response
+                else:
+                    await asyncio.sleep(5)  # sleep for 5 seconds before checking again
 
         async def check_blockfrost(context, tx_id):
             return context.api.transaction(tx_id)
