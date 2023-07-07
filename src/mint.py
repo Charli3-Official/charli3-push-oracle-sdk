@@ -67,7 +67,7 @@ class Mint:
                 }
             }
         }
-        print("tC3 Token policy ID: ", policy_id.payload.hex())
+        # print("tC3 Token policy ID: ", policy_id.payload.hex())
         # Place metadata in AuxiliaryData, the format acceptable by a transaction.
         auxiliary_data = AuxiliaryData(AlonzoMetadata(metadata=Metadata(metadata)))
 
@@ -92,7 +92,7 @@ class Mint:
         # Send the NFT to our own address
         nft_output = TransactionOutput(self.address, Value(2000000, c3_token))
         builder.add_output(nft_output)
-
+        # print(self.context.utxos(self.address))
         await self.submit_tx_builder(builder)
 
     async def submit_tx_builder(self, builder: TransactionBuilder):
