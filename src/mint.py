@@ -44,9 +44,9 @@ class Mint:
         self.address = Address(payment_part=self.pub_key_hash, network=self.network)
         self.minting_script_plutus_v2 = plutus_v2_mint_script
 
-    def mint_nft_with_script(self):
+    async def mint_nft_with_script(self):
         """mint tokens with plutus v2 script"""
-        print(type(self.minting_script_plutus_v2))
+        # print(type(self.minting_script_plutus_v2))
         policy_id = plutus_script_hash(self.minting_script_plutus_v2)
 
         c3_token = MultiAsset.from_primitive(
@@ -67,7 +67,7 @@ class Mint:
                 }
             }
         }
-        print(policy_id.payload.hex())
+        print("tC3 Token policy ID: ", policy_id.payload.hex())
         # Place metadata in AuxiliaryData, the format acceptable by a transaction.
         auxiliary_data = AuxiliaryData(AlonzoMetadata(metadata=Metadata(metadata)))
 
@@ -93,14 +93,15 @@ class Mint:
         nft_output = TransactionOutput(self.address, Value(2000000, c3_token))
         builder.add_output(nft_output)
 
-        self.submit_tx_builder(builder)
+        await self.submit_tx_builder(builder)
 
-    def submit_tx_builder(self, builder: TransactionBuilder):
+    async def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx , sign and submit tx."""
         non_nft_utxo = self.chain_query.find_collateral(self.address)
+        print("non_nft_utxo", non_nft_utxo)
 
         if non_nft_utxo is None:
-            self.chain_query.create_collateral(self.address, self.signing_key)
+            await self.chain_query.create_collateral(self.address, self.signing_key)
             non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         builder.collaterals.append(non_nft_utxo)
@@ -109,4 +110,4 @@ class Mint:
         signed_tx = builder.build_and_sign(
             [self.signing_key], change_address=self.address
         )
-        self.chain_query.submit_tx_with_print(signed_tx)
+        await self.chain_query.submit_tx_with_print(signed_tx)

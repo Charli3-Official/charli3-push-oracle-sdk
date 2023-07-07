@@ -1,9 +1,12 @@
 """Start oracle by submitting a reference script and minting its NFT"""
+from typing import Optional, Union
 from pycardano import (
     Network,
     Address,
     PaymentVerificationKey,
     PaymentExtendedSigningKey,
+    ExtendedSigningKey,
+    PaymentSigningKey,
     TransactionOutput,
     TransactionBuilder,
     Value,
@@ -38,23 +41,25 @@ class OracleStart:
         self,
         network: Network,
         chain_query: ChainQuery,
-        signing_key: PaymentExtendedSigningKey,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
         verification_key: PaymentVerificationKey,
-        stake_key: PaymentVerificationKey,
         oracle_script: PlutusV2Script,
         script_start_slot: int,
         settings: OracleSettings,
         c3_token_hash: ScriptHash,
         c3_token_name: AssetName,
+        stake_key: Optional[PaymentVerificationKey] = None,
     ) -> None:
         self.network = network
         self.chain_query = chain_query
         self.context = self.chain_query.context
         self.signing_key = signing_key
         self.verification_key = verification_key
-        self.stake_key = stake_key
         self.pub_key_hash = self.verification_key.hash()
-        self.stake_key_hash = self.stake_key.hash()
+        self.stake_key = stake_key
+        self.stake_key_hash = (
+            self.stake_key.hash() if self.stake_key is not None else None
+        )
         self.address = Address(
             payment_part=self.pub_key_hash,
             staking_part=self.stake_key_hash,
@@ -71,10 +76,12 @@ class OracleStart:
         self.c3_token_hash = c3_token_hash
         self.c3_token_name = c3_token_name
 
-    def start_oracle(self, initial_c3_amount: int):
+    async def start_oracle(self, initial_c3_amount: int):
         """Start oracle"""
         # Create a locking script that hold oracle script and also mints oracle NFT
-        oracle_owner = OwnerScript(self.network, self.chain_query, self.verification_key)
+        oracle_owner = OwnerScript(
+            self.network, self.chain_query, self.verification_key
+        )
         owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
         owner_script_hash = owner_script.hash()
         c3_asset = MultiAsset(
@@ -155,7 +162,9 @@ class OracleStart:
         builder.add_output(oracle_output)
 
         # Prepare aggstate datum
-        self.oracle_settings.os_node_list = IndefiniteList(self.oracle_settings.os_node_list)
+        self.oracle_settings.os_node_list = IndefiniteList(
+            self.oracle_settings.os_node_list
+        )
         aggstate_datum = AggDatum(aggstate=AggState(agSettings=self.oracle_settings))
         aggstate_output = TransactionOutput(
             self.oracle_address,
@@ -165,10 +174,14 @@ class OracleStart:
         builder.add_output(aggstate_output)
 
         # Prepare reward datum
-        reward_datum = RewardDatum(reward_state=OracleReward(
-            node_reward_list=node_reward_list,
-            platform_reward= RewardInfo(bytes(self.oracle_settings.os_platform_pkh), 0),
-        ))
+        reward_datum = RewardDatum(
+            reward_state=OracleReward(
+                node_reward_list=node_reward_list,
+                platform_reward=RewardInfo(
+                    bytes(self.oracle_settings.os_platform_pkh), 0
+                ),
+            )
+        )
         reward_output = TransactionOutput(
             self.oracle_address,
             Value(3000000, reward_nft),
@@ -176,7 +189,7 @@ class OracleStart:
         )
         builder.add_output(reward_output)
 
-        self.submit_tx_builder(builder)
+        await self.submit_tx_builder(builder)
 
     def _process_common_inputs(self, builder: TransactionBuilder):
         builder.add_input_address(self.address)
@@ -192,16 +205,16 @@ class OracleStart:
         else:
             raise Exception("Unable to find or create collateral.")
 
-    def _get_or_create_collateral(self):
+    async def _get_or_create_collateral(self):
         non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         if non_nft_utxo is None:
-            self.chain_query.create_collateral(self.address, self.signing_key)
+            await self.chain_query.create_collateral(self.address, self.signing_key)
             non_nft_utxo = self.chain_query.find_collateral(self.address)
 
         return non_nft_utxo
 
-    def submit_tx_builder(self, builder: TransactionBuilder):
+    async def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx, sign and submit tx."""
         builder = self._process_common_inputs(builder)
         signed_tx = builder.build_and_sign(
@@ -209,7 +222,7 @@ class OracleStart:
         )
 
         try:
-            self.chain_query.submit_tx_with_print(signed_tx)
+            await self.chain_query.submit_tx_with_print(signed_tx)
             print("Transaction submitted successfully.")
         except Exception as err:
             print("Error submitting transaction: ", err)
