@@ -14,6 +14,7 @@ from pycardano import (
     ScriptHash,
     AssetName,
     PlutusV2Script,
+    BlockFrostChainContext,
 )
 from src.chain_query import ChainQuery
 from src.owner_script import OwnerScript
@@ -114,10 +115,15 @@ if __name__ == "__main__":
         network = Network.TESTNET
     elif config["network"] == "MAINNET":
         network = Network.MAINNET
-    chain_query = ChainQuery(
+
+    blockfrost_context = BlockFrostChainContext(
         config["chain_query"]["token_id"],
+        network,
         base_url=config["chain_query"]["base_url"],
     )
+
+    chain_query = ChainQuery(blockfrost_context=blockfrost_context)
+
     hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
     hdwallet_spend = hdwallet.derive_from_path("m/1852'/1815'/0'/0/0")
     spend_public_key = hdwallet_spend.public_key

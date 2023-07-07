@@ -1,8 +1,11 @@
 """ This module contains the ChainQuery class, which is used to query the blockchain."""
+import logging
+
 from typing import List
 from retry import retry
 from pycardano import (
     BlockFrostChainContext,
+    OgmiosChainContext,
     TransactionBuilder,
     TransactionOutput,
     Transaction,
@@ -11,12 +14,25 @@ from pycardano import (
 from blockfrost import ApiError
 from src.datums import NodeDatum
 
+logger = logging.getLogger("ChainQuery")
+
 
 class ChainQuery:
     """Class to query the blockchain."""
 
-    def __init__(self, project_id: str, base_url: str = None):
-        self.context = BlockFrostChainContext(project_id=project_id, base_url=base_url)
+    def __init__(
+        self,
+        blockfrost_context: BlockFrostChainContext = None,
+        ogmios_context: OgmiosChainContext = None,
+        oracle_address: str = None,
+    ):
+        if blockfrost_context is None and ogmios_context is None:
+            raise ValueError("At least one of the chain contexts must be provided.")
+
+        self.blockfrost_context = blockfrost_context
+        self.ogmios_context = ogmios_context
+        self.oracle_address = oracle_address
+        self.context = blockfrost_context if blockfrost_context else ogmios_context
 
     def _get_datum(self, utxo):
         """get datum for UTxO"""
@@ -46,26 +62,40 @@ class ChainQuery:
                     result.append(utxo)
         return result
 
-    @retry(
-        delay=10,
-        tries=10,
-    )
-    def wait_for_tx(self, tx_id):
+    async def wait_for_tx(self, tx_id):
         """method to wait for a transaction to be included in the blockchain."""
-        self.context.api.transaction(tx_id)
-        print(f"Transaction {tx_id} has been successfully included in the blockchain.")
 
-    def submit_tx_with_print(self, tx: Transaction):
-        """method to submit a transaction and print the result."""
-        print("############### Transaction created ###############")
-        print(tx)
-        serialized_tx = tx.to_cbor()
-        tx_size = len(serialized_tx) / 1024
-        print(f"Transaction size: {tx_size:.2f} KB")
-        print("############### Submitting transaction ###############")
-        response = self.context.submit_tx(tx)
-        print(f"Transaction response: {response}")
-        self.wait_for_tx(str(tx.id))
+        async def _wait_for_tx(context, tx_id, check_fn):
+            """Wait for a transaction to be confirmed."""
+            response = await check_fn(context, tx_id)
+            if response:
+                logger.info("Transaction submitted with tx_id: %s", str(tx_id))
+                return response
+
+        async def check_blockfrost(context, tx_id):
+            return context.api.transaction(tx_id)
+
+        async def check_ogmios(context, tx_id):
+            response = context._query_utxos_by_tx_id(tx_id, 0)
+            return response if response != [] else None
+
+        if self.ogmios_context:
+            return await _wait_for_tx(self.ogmios_context, tx_id, check_ogmios)
+        elif self.blockfrost_context:
+            return await _wait_for_tx(self.blockfrost_context, tx_id, check_blockfrost)
+
+    async def submit_tx_with_print(self, tx: Transaction):
+        logger.info("Submitting transaction: %s", str(tx.id))
+        logger.debug("tx: %s", tx)
+
+        if self.ogmios_context is not None:
+            logger.info("Submitting tx with ogmios")
+            self.ogmios_context.submit_tx(tx.to_cbor())
+        elif self.blockfrost_context is not None:
+            logger.info("Submitting tx with blockfrost")
+            self.blockfrost_context.submit_tx(tx.to_cbor())
+
+        await self.wait_for_tx(str(tx.id))
 
     def find_collateral(self, target_address):
         """method to find collateral utxo."""
@@ -88,7 +118,7 @@ class ChainQuery:
                 )
         return None
 
-    def create_collateral(self, target_address, skey):
+    async def create_collateral(self, target_address, skey):
         """create collateral utxo"""
         print("creating collateral UTxO.")
         collateral_builder = TransactionBuilder(self.context)
@@ -96,6 +126,6 @@ class ChainQuery:
         collateral_builder.add_input_address(target_address)
         collateral_builder.add_output(TransactionOutput(target_address, 5000000))
 
-        self.submit_tx_with_print(
+        await self.submit_tx_with_print(
             collateral_builder.build_and_sign([skey], target_address)
         )
