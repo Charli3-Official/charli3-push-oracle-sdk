@@ -143,8 +143,8 @@ if __name__ == "__main__":
     native_script = owner_minting_script.mk_owner_script(script_start_slot)
     c3_token_hash = ScriptHash.from_primitive(config["c3_token_hash"])
     c3_token_name = AssetName(config["c3_token_name"].encode())
-    print(owner_addr)
-    print(owner_minting_script.print_start_params(script_start_slot))
+    # print(owner_addr)
+    # print(owner_minting_script.print_start_params(script_start_slot))
 
     oracle_script = unzip_and_execute_binary(
         file_name="binary/serialized.zip",
