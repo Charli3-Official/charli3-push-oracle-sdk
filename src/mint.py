@@ -80,7 +80,7 @@ class Mint:
         # Add minting script with an empty datum and a minting redeemer
         builder.add_minting_script(
             self.minting_script_plutus_v2,
-            redeemer=Redeemer(MintToken(), ExecutionUnits(1000000, 300979640)),
+            redeemer=Redeemer(MintToken()),
         )
 
         # Set nft we want to mint
@@ -98,7 +98,6 @@ class Mint:
     async def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx , sign and submit tx."""
         non_nft_utxo = self.chain_query.find_collateral(self.address)
-        print("non_nft_utxo", non_nft_utxo)
 
         if non_nft_utxo is None:
             await self.chain_query.create_collateral(self.address, self.signing_key)
@@ -106,8 +105,12 @@ class Mint:
 
         builder.collaterals.append(non_nft_utxo)
         builder.required_signers = [self.pub_key_hash]
+        # builder.ttl = 360
 
         signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address
+            [self.signing_key],
+            change_address=self.address,
+            auto_validity_start_offset=0,
+            auto_ttl_offset=120,
         )
         await self.chain_query.submit_tx_with_print(signed_tx)

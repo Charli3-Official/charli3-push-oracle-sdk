@@ -107,9 +107,9 @@ class ChainQuery:
             for utxo in self.context.utxos(target_address):
                 # A collateral should contain no multi asset
                 if not utxo.output.amount.multi_asset:
-                    if utxo.output.amount < 10000000:
-                        if utxo.output.amount.coin >= 5000000:
-                            return utxo
+                    # if utxo.output.amount < 10000000:
+                    #     if utxo.output.amount.coin >= 5000000:
+                    return utxo
         except ApiError as err:
             if err.status_code == 404:
                 print("No utxos found")

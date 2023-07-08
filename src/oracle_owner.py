@@ -206,7 +206,9 @@ class OracleOwner:
                             )
                         }
                     )
-                    updated_reward_utxo_output.amount.multi_asset -= c3_asset_to_distribute
+                    updated_reward_utxo_output.amount.multi_asset -= (
+                        c3_asset_to_distribute
+                    )
                 updated_reward_utxo_output.datum = updated_reward_datum
             else:
                 updated_reward_utxo_output = deepcopy(reward_utxo.output)
@@ -494,16 +496,16 @@ class OracleOwner:
         else:
             raise CollateralException("Unable to find or create collateral.")
 
-    def _get_or_create_collateral(self):
+    async def _get_or_create_collateral(self):
         non_nft_utxo = self.chainquery.find_collateral(self.address)
 
         if non_nft_utxo is None:
-            self.chainquery.create_collateral(self.address, self.signing_key)
+            await self.chainquery.create_collateral(self.address, self.signing_key)
             non_nft_utxo = self.chainquery.find_collateral(self.address)
 
         return non_nft_utxo
 
-    def submit_tx_builder(self, builder: TransactionBuilder):
+    async def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx, sign and submit tx."""
         builder = self._process_common_inputs(builder)
         signed_tx = builder.build_and_sign(
@@ -511,7 +513,7 @@ class OracleOwner:
         )
 
         try:
-            self.chainquery.submit_tx_with_print(signed_tx)
+            await self.chainquery.submit_tx_with_print(signed_tx)
             print("Transaction submitted successfully.")
         except CollateralException as err:
             print("Error submitting transaction: ", err)

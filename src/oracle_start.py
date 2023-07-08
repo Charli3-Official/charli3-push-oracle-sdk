@@ -193,11 +193,11 @@ class OracleStart:
 
         await self.submit_tx_builder(builder)
 
-    def _process_common_inputs(self, builder: TransactionBuilder):
+    async def _process_common_inputs(self, builder: TransactionBuilder):
         builder.add_input_address(self.address)
         builder.add_output(TransactionOutput(self.address, 5000000))
 
-        non_nft_utxo = self._get_or_create_collateral()
+        non_nft_utxo = await self._get_or_create_collateral()
 
         if non_nft_utxo is not None:
             builder.collaterals.append(non_nft_utxo)
@@ -218,9 +218,12 @@ class OracleStart:
 
     async def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx, sign and submit tx."""
-        builder = self._process_common_inputs(builder)
+        builder = await self._process_common_inputs(builder)
         signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address
+            [self.signing_key],
+            change_address=self.address,
+            auto_validity_start_offset=0,
+            auto_ttl_offset=120,
         )
 
         try:
