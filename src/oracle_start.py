@@ -84,6 +84,7 @@ class OracleStart:
         )
         owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
         owner_script_hash = owner_script.hash()
+        print(owner_script_hash)
         c3_asset = MultiAsset(
             {self.c3_token_hash: Asset({self.c3_token_name: initial_c3_amount})}
         )

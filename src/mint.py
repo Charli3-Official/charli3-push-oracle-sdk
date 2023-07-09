@@ -105,12 +105,11 @@ class Mint:
 
         builder.collaterals.append(non_nft_utxo)
         builder.required_signers = [self.pub_key_hash]
-        # builder.ttl = 360
 
         signed_tx = builder.build_and_sign(
             [self.signing_key],
             change_address=self.address,
             auto_validity_start_offset=0,
-            auto_ttl_offset=120,
+            auto_ttl_offset=10,
         )
         await self.chain_query.submit_tx_with_print(signed_tx)
