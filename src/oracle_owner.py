@@ -509,7 +509,10 @@ class OracleOwner:
         """adds collateral and signers to tx, sign and submit tx."""
         builder = self._process_common_inputs(builder)
         signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address
+            [self.signing_key],
+            change_address=self.address,
+            auto_validity_start_offset=0,
+            auto_ttl_offset=120,
         )
 
         try:

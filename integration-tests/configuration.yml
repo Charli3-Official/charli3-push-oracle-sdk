@@ -1,0 +1,18 @@
+oracle_owner:
+  script_start_slot: 1
+  oracle_addr: "addr1w82eqpjma50fu2452dy075yjrtznhpl4g0csscz4sqt62cg9a5kr7"
+  minting_nft_hash: "9978e6e2990c7a8184e642a5a9d609a9688fc1cdebbf2b027842b754"
+  c3_initial_amount: 1000
+
+oracle_settings:
+  os_updated_nodes: 6000
+  os_updated_node_time: 1800000
+  os_aggregate_time: 1800000
+  os_aggregate_change: 200
+  os_node_fee_price:
+    node_fee: 10
+    aggregate_fee: 20
+    platform_fee: 10
+  os_mad_multiplier: 20000
+  os_divergence: 1500
+  os_platform_pkh: "1a550d57572584e1add125b5712f709ac3b9828ad86581a4759022ba"
