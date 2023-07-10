@@ -46,7 +46,6 @@ class Mint:
 
     async def mint_nft_with_script(self):
         """mint tokens with plutus v2 script"""
-        # print(type(self.minting_script_plutus_v2))
         policy_id = plutus_script_hash(self.minting_script_plutus_v2)
 
         c3_token = MultiAsset.from_primitive(
