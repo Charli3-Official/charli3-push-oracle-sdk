@@ -63,9 +63,10 @@ class TestBase:
         config = yaml.safe_load(stream)
 
     # Oracle Configuration
-    script_start_slot = 1
-    c3_token_name = AssetName(b"Charli3")
-    c3_initial_amount = config["oracle_owner"]["tC3_initial_amount"]
+    script_start_slot = config["oracle_owner"]["script_start_slot"]
+    tC3_token_name = AssetName(b"Charli3")
+    tC3_initial_amount = config["oracle_owner"]["tC3_initial_amount"]
+    tC3_add_funds = config["oracle_owner"]["tC3_add_funds"]
 
     # Load temporal wallets
     wallet_keys = load_wallet_keys("./wallets/")
@@ -132,6 +133,25 @@ class TestBase:
         owner_verification_key,
     )
     native_script = owner_minting_script.mk_owner_script(script_start_slot)
+    owner_script_hash = native_script.hash()
+
+    oracle_nft = MultiAsset.from_primitive(
+        {owner_script_hash.payload: {b"OracleFeed": 1}}
+    )
+
+    single_node_nft = MultiAsset.from_primitive(
+        {owner_script_hash.payload: {b"NodeFeed": 1}}
+    )
+
+    oracle_nft = MultiAsset.from_primitive(
+        {owner_script_hash.payload: {b"OracleFeed": 1}}
+    )
+
+    aggstate_nft = MultiAsset.from_primitive(
+        {owner_script_hash.payload: {b"AggState": 1}}
+    )
+
+    reward_nft = MultiAsset.from_primitive({owner_script_hash.payload: {b"Reward": 1}})
 
     payment_path = os.path.join(dir_path, "..", "..", "mint_script.plutus")
     with open(payment_path, "r") as f:
@@ -153,15 +173,18 @@ class TestBase:
         args=["-a", "-v"],
     )
 
-    # Build the path relative to this fiel to the .cbor file
-    # oracle_script_path = os.path.join(dir_path, "..", "plutus_scripts", "oracleV3.cbor")
-
-    # with open(oracle_script_path, "r") as f:
-    #     script_hex = f.read()
-    #     oracle_plutus_script_v2 = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
-
     script_hash = plutus_script_hash(oracle_plutus_script_v2)
     oracle_script_address = Address(payment_part=script_hash, network=NETWORK)
+
+    async def mint_payment_token(self):
+        tC3 = Mint(
+            self.NETWORK,
+            self.chain_context,
+            self.owner_signing_key,
+            self.owner_verification_key,
+            self.payment_script,
+        )
+        await tC3.mint_nft_with_script()
 
     @retry(tries=TEST_RETRIES, delay=3)
     def assert_output(self, target_address, target_output):
@@ -176,12 +199,20 @@ class TestBase:
 
         assert found, f"Cannot find target UTxO in address: {target_address}"
 
-    async def mint_payment_token(self):
-        tC3 = Mint(
-            self.NETWORK,
-            self.chain_context,
-            self.owner_signing_key,
-            self.owner_verification_key,
-            self.payment_script,
+    def get_tC3_at_aggstate_utxo(
+        self,
+        target_address,
+    ):
+        oracle_utxos = self.chain_context.context.utxos(target_address)
+
+        aggstate_utxo = next(
+            (
+                utxo
+                for utxo in oracle_utxos
+                if utxo.output.amount.multi_asset >= self.aggstate_nft
+            ),
+            0,
         )
-        await tC3.mint_nft_with_script()
+        return aggstate_utxo.output.amount.multi_asset[self.payment_script_hash][
+            self.tC3_token_name
+        ]

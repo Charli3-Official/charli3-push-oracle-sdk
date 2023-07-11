@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple, Union
 import cbor2
 from pycardano import (
     Network,
+    PaymentSigningKey,
     Address,
     PaymentVerificationKey,
     Value,
@@ -60,7 +61,7 @@ class OracleOwner:
         self,
         network: Network,
         chainquery: ChainQuery,
-        signing_key: Union[ExtendedSigningKey, PaymentExtendedSigningKey],
+        signing_key: Union[ExtendedSigningKey, PaymentSigningKey],
         verification_key: PaymentVerificationKey,
         node_nft: MultiAsset,
         aggstate_nft: MultiAsset,
@@ -77,8 +78,8 @@ class OracleOwner:
     ) -> None:
         check_type(network, Network, "network")
         check_type(chainquery, ChainQuery, "chainquery")
-        if not isinstance(signing_key, (PaymentExtendedSigningKey, ExtendedSigningKey)):
-            check_type(signing_key, PaymentExtendedSigningKey, "signing_key")
+        if not isinstance(signing_key, (PaymentSigningKey, ExtendedSigningKey)):
+            check_type(signing_key, PaymentSigningKey, "signing_key")
         check_type(verification_key, PaymentVerificationKey, "verification_key")
         check_type(node_nft, MultiAsset, "node_nft")
         check_type(aggstate_nft, MultiAsset, "aggstate_nft")
@@ -136,7 +137,7 @@ class OracleOwner:
             self.minting_script = None
             self.validity_start = None
 
-    def add_nodes(self, pkhs: List[str]):
+    async def add_nodes(self, pkhs: List[str]):
         """Add nodes to oracle script."""
         pkhs = list(map(lambda x: bytes(VerificationKeyHash.from_primitive(x)), pkhs))
         eligible_nodes = self._get_eligible_nodes(pkhs, operation="add")
@@ -172,9 +173,9 @@ class OracleOwner:
             for node_output in node_outputs:
                 builder.add_output(node_output)
 
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
 
-    def remove_nodes(self, pkhs: List[str]):
+    async def remove_nodes(self, pkhs: List[str]):
         """Remove nodes from the oracle script."""
         pkhs = [bytes.fromhex(pkh) for pkh in pkhs]
         eligible_nodes = self._get_eligible_nodes(pkhs, operation="remove")
@@ -243,9 +244,9 @@ class OracleOwner:
                     )
             self._burn_node_nfts(eligible_nodes, builder, remove_redeemer)
 
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
 
-    def edit_settings(self, settings: OracleSettings):
+    async def edit_settings(self, settings: OracleSettings):
         """edit settings of oracle script."""
         aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
@@ -278,7 +279,7 @@ class OracleOwner:
                 updated_reward_utxo_output=updated_reward_output,
             )
 
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
         else:
             print("Settings not changed or modified osNodeList")
 
@@ -287,7 +288,7 @@ class OracleOwner:
         _, aggstate_datum = self._get_aggstate_utxo_and_datum()
         return aggstate_datum.aggstate.agSettings
 
-    def add_funds(self, funds: int):
+    async def add_funds(self, funds: int):
         """add funds (payment token) to aggstate UTxO of oracle script."""
 
         try:
@@ -328,12 +329,12 @@ class OracleOwner:
                 builder.add_output(aggstate_tx_output)
                 builder.add_output(reward_utxo.output)
 
-                self.submit_tx_builder(builder)
+                await self.submit_tx_builder(builder)
 
         except (InsufficientUTxOBalanceException, UTxOSelectionException) as exc:
             print("Insufficient Funds in Owner wallet.", exc)
 
-    def platform_collect(self):
+    async def platform_collect(self):
         """Collect oracle admin c3 rewards from oracle script."""
 
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
@@ -365,11 +366,11 @@ class OracleOwner:
                     amount=Value(2000000, c3_asset),
                 )
             )
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
         else:
             print("No platform reward available to collect for owner.")
 
-    def oracle_close(self):
+    async def oracle_close(self):
         """remove all oralce utxos from oracle script."""
 
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
@@ -433,12 +434,12 @@ class OracleOwner:
                     redeemer=deepcopy(oracle_close_redeemer),
                 )
 
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
 
         else:
             print("oracle close error.")
 
-    def create_reference_script(self, oracle_script: PlutusV2Script = None):
+    async def create_reference_script(self, oracle_script: PlutusV2Script = None):
         """build's partial reference script tx."""
 
         if not oracle_script:
@@ -453,11 +454,11 @@ class OracleOwner:
 
             (builder.add_output(reference_script_utxo_output))
 
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
         else:
             print("script hash mismatch")
 
-    def initialize_oracle_datum(self):
+    async def initialize_oracle_datum(self):
         """initialise oracle datum"""
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
         oraclefeed_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.oracle_nft)[0]
@@ -480,13 +481,13 @@ class OracleOwner:
             )
             builder.add_output(oraclefeed_output)
 
-            self.submit_tx_builder(builder)
+            await self.submit_tx_builder(builder)
 
-    def _process_common_inputs(self, builder: TransactionBuilder):
+    async def _process_common_inputs(self, builder: TransactionBuilder):
         builder.add_input_address(self.address)
         builder.add_output(TransactionOutput(self.address, 5000000))
 
-        non_nft_utxo = self._get_or_create_collateral()
+        non_nft_utxo = await self._get_or_create_collateral()
 
         if non_nft_utxo is not None:
             builder.collaterals.append(non_nft_utxo)
@@ -507,7 +508,7 @@ class OracleOwner:
 
     async def submit_tx_builder(self, builder: TransactionBuilder):
         """adds collateral and signers to tx, sign and submit tx."""
-        builder = self._process_common_inputs(builder)
+        builder = await self._process_common_inputs(builder)
         signed_tx = builder.build_and_sign(
             [self.signing_key],
             change_address=self.address,

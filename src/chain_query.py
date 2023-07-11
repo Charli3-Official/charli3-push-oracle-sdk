@@ -107,9 +107,9 @@ class ChainQuery:
             for utxo in self.context.utxos(target_address):
                 # A collateral should contain no multi asset
                 if not utxo.output.amount.multi_asset:
-                    # if utxo.output.amount < 10000000:
-                    #     if utxo.output.amount.coin >= 5000000:
-                    return utxo
+                    if utxo.output.amount < 10000000:
+                        if utxo.output.amount.coin >= 7000000:
+                            return utxo
         except ApiError as err:
             if err.status_code == 404:
                 print("No utxos found")
@@ -128,7 +128,7 @@ class ChainQuery:
         collateral_builder = TransactionBuilder(self.context)
 
         collateral_builder.add_input_address(target_address)
-        collateral_builder.add_output(TransactionOutput(target_address, 5000000))
+        collateral_builder.add_output(TransactionOutput(target_address, 7000000))
 
         await self.submit_tx_with_print(
             collateral_builder.build_and_sign([skey], target_address)
