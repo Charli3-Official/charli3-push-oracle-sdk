@@ -44,5 +44,6 @@ class TestRemoveNodes(TestBase):
 
         updated_total_nodes = self.get_total_nodes(self.oracle_script_address)
 
-        assert total_nodes - len(nodes_to_be_removed) == updated_total_nodes, \
-            f"Expected {total_nodes - len(nodes_to_be_removed)}, but got: {updated_total_nodes}"
+        assert (
+            total_nodes - len(nodes_to_be_removed) == updated_total_nodes
+        ), f"Expected {total_nodes - len(nodes_to_be_removed)}, but got: {updated_total_nodes}"
