@@ -58,7 +58,7 @@ class TestBase:
 
     check_chain_context(chain_context)
 
-    # Test configurations
+    # Integration tests configurations
     with open("./configuration.yml", "r") as stream:
         config = yaml.safe_load(stream)
 
@@ -67,6 +67,8 @@ class TestBase:
     tC3_token_name = AssetName(b"Charli3")
     tC3_initial_amount = config["oracle_owner"]["tC3_initial_amount"]
     tC3_add_funds = config["oracle_owner"]["tC3_add_funds"]
+
+    updated_config = config["updated_oracle_settings"]
 
     # Load temporal wallets
     wallet_keys = load_wallet_keys("./wallets/")
@@ -101,6 +103,15 @@ class TestBase:
     platform_6_signing_key = wallet_keys[6][0]
     platform_6_verification_key = wallet_keys[6][1]
     platform_6_pkh = bytes.fromhex(str(platform_6_verification_key.hash()))
+
+    # Additional wallets
+    node_6_signing_key = wallet_keys[7][0]
+    node_6_verification_key = wallet_keys[7][1]
+    node_6_pkh_str = str(node_6_verification_key.hash())
+
+    node_7_signing_key = wallet_keys[8][0]
+    node_7_verification_key = wallet_keys[8][1]
+    node_7_pkh_str = str(node_7_verification_key.hash())
 
     # Oracle Settings
     agSettings = OracleSettings(
@@ -173,6 +184,11 @@ class TestBase:
         args=["-a", "-v"],
     )
 
+    # oracle_script_path = os.path.join(dir_path, "..", "plutus_scripts", "oracleV3.cbor")
+    # with open(oracle_script_path, "r") as f:
+    #     script_hex = f.read()
+    #     oracle_plutus_script_v2 = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
+
     script_hash = plutus_script_hash(oracle_plutus_script_v2)
     oracle_script_address = Address(payment_part=script_hash, network=NETWORK)
 
@@ -199,6 +215,7 @@ class TestBase:
 
         assert found, f"Cannot find target UTxO in address: {target_address}"
 
+    @retry(tries=TEST_RETRIES, delay=3)
     def get_tC3_at_aggstate_utxo(
         self,
         target_address,
@@ -216,3 +233,26 @@ class TestBase:
         return aggstate_utxo.output.amount.multi_asset[self.payment_script_hash][
             self.tC3_token_name
         ]
+
+    @retry(tries=TEST_RETRIES, delay=3)
+    def get_aggstate_utxo_datum(self, target_address):
+        oracle_utxos = self.chain_context.context.utxos(target_address)
+
+        aggstate_utxo = next(
+            (
+                utxo
+                for utxo in oracle_utxos
+                if utxo.output.amount.multi_asset >= self.aggstate_nft
+            ),
+            0,
+        )
+        return aggstate_utxo.output.datum
+
+    @retry(tries=TEST_RETRIES, delay=3)
+    def get_total_nodes(self, target_address):
+        oracle_utxos = self.chain_context.context.utxos(target_address)
+        return sum(
+            1
+            for utxo in oracle_utxos
+            if utxo.output.amount.multi_asset >= self.single_node_nft
+        )

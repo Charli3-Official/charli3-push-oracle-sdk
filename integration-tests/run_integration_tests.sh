@@ -22,7 +22,7 @@ rm -rf ./wallets/*
 rm -rf ./db/*
 
 # Start the local cluster and dump the output to JSON
-local-cluster -n 7 --dump-info-json ./local-cluster-info.json -d ./wallets/ --ada 10000 --utxos 4 --lovelace 9000000 -s 1s -e 300 > /dev/null 2>&1 &
+local-cluster -n 9 --dump-info-json ./local-cluster-info.json -d ./wallets/ --ada 10000 --utxos 4 --lovelace 9000000 -s 1s -e 300 > /dev/null 2>&1 &
 # Save the PID of the local-cluster process
 local_cluster_pid=$!
 
