@@ -23,10 +23,12 @@ from charli3_offchain_core.chain_query import ChainQuery
 
 @dataclass
 class MintToken(PlutusData):
+    """MintToken class"""
     CONSTR_ID = 0
 
 
 class Mint:
+    """Mint class"""
     def __init__(
         self,
         network: Network,
@@ -44,7 +46,7 @@ class Mint:
         self.address = Address(payment_part=self.pub_key_hash, network=self.network)
         self.minting_script_plutus_v2 = plutus_v2_mint_script
 
-    def mint_nft_with_script(self):
+    async def mint_nft_with_script(self):
         """mint tokens with plutus v2 script"""
         print(type(self.minting_script_plutus_v2))
         policy_id = plutus_script_hash(self.minting_script_plutus_v2)
@@ -93,20 +95,4 @@ class Mint:
         nft_output = TransactionOutput(self.address, Value(2000000, c3_token))
         builder.add_output(nft_output)
 
-        self.submit_tx_builder(builder)
-
-    def submit_tx_builder(self, builder: TransactionBuilder):
-        """adds collateral and signers to tx , sign and submit tx."""
-        non_nft_utxo = self.chain_query.find_collateral(self.address)
-
-        if non_nft_utxo is None:
-            self.chain_query.create_collateral(self.address, self.signing_key)
-            non_nft_utxo = self.chain_query.find_collateral(self.address)
-
-        builder.collaterals.append(non_nft_utxo)
-        builder.required_signers = [self.pub_key_hash]
-
-        signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address
-        )
-        self.chain_query.submit_tx_with_print(signed_tx)
+        await self.chain_query.submit_tx_builder(builder, self.signing_key, self.address)

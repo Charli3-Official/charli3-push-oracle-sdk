@@ -1,93 +1,132 @@
-""" Business logic for calculating the aggregation and consensus."""
+"""Business logic for calculating the aggregation and consensus."""
 from typing import List, Tuple
 from statistics import median
 import random
 
-factor_resolution: int = 10000
+FACTOR_RESOLUTION = 10000
 
 
-def random_median(numbers: List[int]):
-    """
-    This function takes a list of numbers as an input and returns the median of the list.
+def random_median(numbers: List[int]) -> int:
+    """Calculate the median from a list of numbers.
+
     The median is calculated as the middle value when the list is sorted.
-    When the list has an even number of elements, the median is calculated as a random element
-    from the middle two elements.
+    When the list has an even number of elements, the median is calculated
+    as a random element from the middle two elements.
 
-    Parameters:
-    numbers (list): a list of numerical values
+    Args:
+        numbers (List[int]): A list of numerical values.
 
     Returns:
-    float: median value of the list
+        int: Median value of the list.
 
-    Example:
-    median([1, 2, 3, 4, 5, 6]) -> 3 or 4 (randomly)
-
+    Examples:
+        median([1, 2, 3, 4, 5, 6]) -> 3 or 4 (randomly)
     """
     numbers.sort()
     if len(numbers) % 2 == 0:
-        median1 = numbers[len(numbers) // 2]
-        median2 = numbers[len(numbers) // 2 - 1]
-        result = random.choice([median1, median2])
+        median_1 = numbers[len(numbers) // 2]
+        median_2 = numbers[len(numbers) // 2 - 1]
+        result = random.choice([median_1, median_2])
     else:
         result = numbers[len(numbers) // 2]
     return result
 
 
 def aggregation(
-    mad_multi: int, diver: int, feeds: List[int]
+    iqr_multiplier: int, diver_in_percentage: int, node_feeds: List[int]
 ) -> Tuple[int, List[int], int, int]:
-    """
-    Calculate the median, onConsensus, lower bound, and upper bound of the aggregated feeds.
+    """Calculate the median, on_consensus, lower bound, and upper bound of the aggregated feeds.
 
-    Parameters:
-    - mad_multi: the MAD (mean absolute deviation)
-    - diver: the divergence
-    - feeds: the feeds to be aggregated
+    Args:
+        iqr_multiplier (int): k value for outlier detection. The recommended value is 0 (1.5),
+                        the onchain code has the range restriction between 0 - 4
+        diver (int): the divergence in percentage (10000)
+        feeds (List[int]): the feeds to be aggregated
 
     Returns:
-    - A 4-tuple containing the median, onConsensus, lower bound, and upper bound of the
-      aggregated feeds.
+        Tuple[int, List[int], int, int]: A 4-tuple containing the median, on_consensus, lower bound,
+                                         and upper bound of the aggregated feeds.
+    """
+    sort_feeds = sorted(node_feeds)
+    _median = int(median(sort_feeds))
+    l_feeds = len(sort_feeds)
+    on_consensus = consensus(
+        sort_feeds, l_feeds, _median, iqr_multiplier, diver_in_percentage
+    )
+    lower = on_consensus[0]
+    upper = on_consensus[-1]
+    return _median, on_consensus, lower, upper
+
+
+def consensus(
+    node_feeds: List[int],
+    l_feeds: int,
+    _median: int,
+    iqr_multiplier: int,
+    diver_in_percentage: int,
+) -> List[int]:
+    """Calculate the values in the consensus.
+
+    Args:
+        node_feeds (List[int]): Sorted node feeds list
+        l_feeds (int): Length of the node_feeds
+        _median (int): Median value among node_feeds
+        iqr_multiplier (int): k value for outlier detection. The recommended value is 0 (1.5),
+                              the onchain code has the range restriction between 0 - 4
+        diver_in_percentage (int): Percentage of divergence from the median allowed to
+                                   participate in the consensus
+
+    Returns:
+        List[int]: List of consensus values.
     """
 
-    def left_filter(feeds: List[int]) -> Tuple[int, List[int]]:
-        """
-        Filter the given feeds and return the lower bound and the values on consensus.
+    def scale(t: int, iqr: int) -> int:
+        if t == 0:
+            return iqr + iqr // 2
 
-        Parameters:
-        - feeds: the feeds to be filtered
+        return t * iqr
 
-        Returns:
-        - A 2-tuple containing the lower bound and the values on consensus.
-        """
-        nonlocal mad, med
-        for i, feed in enumerate(feeds):
-            if is_in_consensus(mad_multi, diver, mad, med, feed):
-                return feed, feeds[i:]
-        return 0, []
+    def divergence_from_median(node_feed: int) -> int:
+        return (node_feed * FACTOR_RESOLUTION) // _median
 
-    def is_in_consensus(
-        mad_multiplier: int, div: int, mad: int, med: int, d: int
-    ) -> bool:
-        """
-        Check if a value is accepted according to the consensus mechanism.
+    first_quart = first_quartile(node_feeds, l_feeds)
+    third_quart = third_quartile(node_feeds, l_feeds)
 
-        Parameters:
-        - mad_multiplier: the MAD multiplier
-        - div: the divergence
-        - mad: the MAD
-        - med: the median
-        - d: the value to be checked
+    interquartile_range = third_quart - first_quart
+    lower_bound = first_quart - scale(iqr_multiplier, interquartile_range)
+    upper_bound = third_quart + scale(iqr_multiplier, interquartile_range)
 
-        Returns:
-        - True if the value is accepted by the consensus mechanism, False otherwise.
-        """
-        abs_diff = abs(med - d) * factor_resolution
-        deviation = abs_diff // med
-        return (abs_diff <= mad_multiplier * mad) and (deviation < div)
+    return [
+        x
+        for x in node_feeds
+        if divergence_from_median(abs(x - _median)) <= diver_in_percentage
+        and lower_bound <= x <= upper_bound
+    ]
 
-    s_feeds = sorted(feeds)
-    med = int(median(s_feeds))
-    mad = median(sorted([abs(f - med) for f in s_feeds]))
-    lower, s_feeds_ = left_filter(s_feeds)
-    upper, on_consensus = left_filter(s_feeds_[::-1])
-    return med, on_consensus, lower, upper
+
+def first_quartile(node_feeds: List[int], l_feeds: int) -> float:
+    """Calculate the first quartile of the input node feeds.
+
+    Args:
+        node_feeds (List[int]): Sorted node feeds list
+        l_feeds (int): Length of the node_feeds
+
+    Returns:
+        float: Node feeds' first quartile
+    """
+    mid = l_feeds // 2
+    return median(node_feeds[:mid])
+
+
+def third_quartile(node_feeds: List[int], l_feeds: int) -> float:
+    """Calculate the third quartile of the input node feeds.
+
+    Args:
+        node_feeds (List[int]): Sorted node feeds list
+        l_feeds (int): Length of the node_feeds
+
+    Returns:
+        float: Node feeds' third quartile
+    """
+    mid = (l_feeds // 2) + (l_feeds % 2)
+    return median(node_feeds[mid:])

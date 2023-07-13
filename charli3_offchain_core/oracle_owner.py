@@ -1,7 +1,6 @@
 """Oracle Owner contract transactions class"""
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
-import cbor2
 from pycardano import (
     Network,
     Address,
@@ -50,7 +49,6 @@ from charli3_offchain_core.oracle_checks import (
     get_node_own_utxo,
     check_type,
 )
-from charli3_offchain_core.utils.exceptions import CollateralException
 
 
 class OracleOwner:
@@ -127,7 +125,11 @@ class OracleOwner:
         )
         self.reference_script_input = reference_script_input
         self.script_utxo = (
-            self.get_reference_script_utxo() if self.reference_script_input else None
+            self.chainquery.get_reference_script_utxo(
+                self.oracle_addr, self.reference_script_input, self.oracle_script_hash
+            )
+            if self.reference_script_input
+            else None
         )
         if minting_script:
             self.minting_script = minting_script
@@ -136,7 +138,7 @@ class OracleOwner:
             self.minting_script = None
             self.validity_start = None
 
-    def add_nodes(self, pkhs: List[str]):
+    async def add_nodes(self, pkhs: List[str]):
         """Add nodes to oracle script."""
         pkhs = list(map(lambda x: bytes(VerificationKeyHash.from_primitive(x)), pkhs))
         eligible_nodes = self._get_eligible_nodes(pkhs, operation="add")
@@ -172,9 +174,9 @@ class OracleOwner:
             for node_output in node_outputs:
                 builder.add_output(node_output)
 
-            self.submit_tx_builder(builder)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
 
-    def remove_nodes(self, pkhs: List[str]):
+    async def remove_nodes(self, pkhs: List[str]):
         """Remove nodes from the oracle script."""
         pkhs = [bytes.fromhex(pkh) for pkh in pkhs]
         eligible_nodes = self._get_eligible_nodes(pkhs, operation="remove")
@@ -206,7 +208,9 @@ class OracleOwner:
                             )
                         }
                     )
-                    updated_reward_utxo_output.amount.multi_asset -= c3_asset_to_distribute
+                    updated_reward_utxo_output.amount.multi_asset -= (
+                        c3_asset_to_distribute
+                    )
                 updated_reward_utxo_output.datum = updated_reward_datum
             else:
                 updated_reward_utxo_output = deepcopy(reward_utxo.output)
@@ -241,16 +245,17 @@ class OracleOwner:
                     )
             self._burn_node_nfts(eligible_nodes, builder, remove_redeemer)
 
-            self.submit_tx_builder(builder)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
 
-    def edit_settings(self, settings: OracleSettings):
+    async def edit_settings(self, settings: OracleSettings):
         """edit settings of oracle script."""
         aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
 
         if (
-            settings != aggstate_datum.aggstate.agSettings
-            and settings.os_node_list == aggstate_datum.aggstate.agSettings.os_node_list
+            settings != aggstate_datum.aggstate.ag_settings
+            and settings.os_node_list
+            == aggstate_datum.aggstate.ag_settings.os_node_list
         ):
             # prepare datums
             updated_aggstate_datum = self._update_aggstate(aggstate_datum, settings)
@@ -259,7 +264,7 @@ class OracleOwner:
             updated_reward_output = deepcopy(reward_utxo.output)
             if (
                 settings.os_platform_pkh
-                != aggstate_datum.aggstate.agSettings.os_platform_pkh
+                != aggstate_datum.aggstate.ag_settings.os_platform_pkh
             ):
                 updated_reward_datum = deepcopy(reward_datum)
                 updated_reward_datum.reward_state.platform_reward.reward_address = (
@@ -276,16 +281,16 @@ class OracleOwner:
                 updated_reward_utxo_output=updated_reward_output,
             )
 
-            self.submit_tx_builder(builder)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
         else:
             print("Settings not changed or modified osNodeList")
 
     def get_oracle_settings(self) -> OracleSettings:
         """get oracle settings from oracle script."""
         _, aggstate_datum = self._get_aggstate_utxo_and_datum()
-        return aggstate_datum.aggstate.agSettings
+        return aggstate_datum.aggstate.ag_settings
 
-    def add_funds(self, funds: int):
+    async def add_funds(self, funds: int):
         """add funds (payment token) to aggstate UTxO of oracle script."""
 
         try:
@@ -326,12 +331,12 @@ class OracleOwner:
                 builder.add_output(aggstate_tx_output)
                 builder.add_output(reward_utxo.output)
 
-                self.submit_tx_builder(builder)
+                await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
 
         except (InsufficientUTxOBalanceException, UTxOSelectionException) as exc:
             print("Insufficient Funds in Owner wallet.", exc)
 
-    def platform_collect(self):
+    async def platform_collect(self):
         """Collect oracle admin c3 rewards from oracle script."""
 
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
@@ -363,11 +368,11 @@ class OracleOwner:
                     amount=Value(2000000, c3_asset),
                 )
             )
-            self.submit_tx_builder(builder)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
         else:
             print("No platform reward available to collect for owner.")
 
-    def oracle_close(self):
+    async def oracle_close(self):
         """remove all oralce utxos from oracle script."""
 
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
@@ -415,7 +420,7 @@ class OracleOwner:
                 builder.native_scripts = [self.minting_script]
                 builder.validity_start = self.validity_start
             else:
-                nft_minting_script = self.get_plutus_script(self.nft_hash)
+                nft_minting_script = self.chainquery.get_plutus_script(self.nft_hash)
                 builder.add_minting_script(
                     nft_minting_script, redeemer=Redeemer(MintToken())
                 )
@@ -431,16 +436,16 @@ class OracleOwner:
                     redeemer=deepcopy(oracle_close_redeemer),
                 )
 
-            self.submit_tx_builder(builder)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
 
         else:
             print("oracle close error.")
 
-    def create_reference_script(self, oracle_script: PlutusV2Script = None):
+    async def create_reference_script(self, oracle_script: PlutusV2Script = None):
         """build's partial reference script tx."""
 
         if not oracle_script:
-            oracle_script = self.get_plutus_script(self.oracle_script_hash)
+            oracle_script = self.chainquery.get_plutus_script(self.oracle_script_hash)
 
         if plutus_script_hash(oracle_script) == self.oracle_script_hash:
             reference_script_utxo_output = TransactionOutput(
@@ -451,11 +456,11 @@ class OracleOwner:
 
             (builder.add_output(reference_script_utxo_output))
 
-            self.submit_tx_builder(builder)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
         else:
             print("script hash mismatch")
 
-    def initialize_oracle_datum(self):
+    async def initialize_oracle_datum(self):
         """initialise oracle datum"""
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
         oraclefeed_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.oracle_nft)[0]
@@ -478,51 +483,13 @@ class OracleOwner:
             )
             builder.add_output(oraclefeed_output)
 
-            self.submit_tx_builder(builder)
-
-    def _process_common_inputs(self, builder: TransactionBuilder):
-        builder.add_input_address(self.address)
-        builder.add_output(TransactionOutput(self.address, 5000000))
-
-        non_nft_utxo = self._get_or_create_collateral()
-
-        if non_nft_utxo is not None:
-            builder.collaterals.append(non_nft_utxo)
-            builder.required_signers = [self.pub_key_hash]
-
-            return builder
-        else:
-            raise CollateralException("Unable to find or create collateral.")
-
-    def _get_or_create_collateral(self):
-        non_nft_utxo = self.chainquery.find_collateral(self.address)
-
-        if non_nft_utxo is None:
-            self.chainquery.create_collateral(self.address, self.signing_key)
-            non_nft_utxo = self.chainquery.find_collateral(self.address)
-
-        return non_nft_utxo
-
-    def submit_tx_builder(self, builder: TransactionBuilder):
-        """adds collateral and signers to tx, sign and submit tx."""
-        builder = self._process_common_inputs(builder)
-        signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address
-        )
-
-        try:
-            self.chainquery.submit_tx_with_print(signed_tx)
-            print("Transaction submitted successfully.")
-        except CollateralException as err:
-            print("Error submitting transaction: ", err)
-        except Exception as err:
-            print("Error submitting transaction: ", err)
+            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
 
     def _add_nodes_to_aggstate(
         self, aggstate_datum: AggDatum, nodes: List[bytes]
     ) -> AggDatum:
         """add nodes to aggstate datum"""
-        aggstate_datum.aggstate.agSettings.os_node_list.extend(nodes)
+        aggstate_datum.aggstate.ag_settings.os_node_list.extend(nodes)
         return aggstate_datum
 
     def _add_nodes_to_rewardstate(
@@ -541,8 +508,8 @@ class OracleOwner:
     ) -> AggDatum:
         """remove nodes to aggstate datum"""
         for node in nodes:
-            if node in aggstate_datum.aggstate.agSettings.os_node_list:
-                aggstate_datum.aggstate.agSettings.os_node_list.remove(node)
+            if node in aggstate_datum.aggstate.ag_settings.os_node_list:
+                aggstate_datum.aggstate.ag_settings.os_node_list.remove(node)
 
         return aggstate_datum
 
@@ -565,14 +532,14 @@ class OracleOwner:
         self, aggstate_datum: AggDatum, settings: OracleSettings
     ) -> AggDatum:
         """update settings to aggstate datum"""
-        aggstate_datum.aggstate.agSettings = settings
+        aggstate_datum.aggstate.ag_settings = settings
         return aggstate_datum
 
     def _get_eligible_nodes(self, pkhs: List[bytes], operation: str) -> List[bytes]:
         """Get eligible nodes to add or remove."""
         eligible_nodes: List[bytes] = []
         _, aggstate_datum = self._get_aggstate_utxo_and_datum()
-        node_list = aggstate_datum.aggstate.agSettings.os_node_list
+        node_list = aggstate_datum.aggstate.ag_settings.os_node_list
 
         for node in pkhs:
             node_exists = check_node_exists(node_list, node)
@@ -644,7 +611,7 @@ class OracleOwner:
             builder.native_scripts = [self.minting_script]
             builder.validity_start = self.validity_start
         else:
-            nft_minting_script = self.get_plutus_script(self.nft_hash)
+            nft_minting_script = self.chainquery.get_plutus_script(self.nft_hash)
             builder.add_minting_script(
                 nft_minting_script, redeemer=Redeemer(MintToken())
             )
@@ -671,7 +638,7 @@ class OracleOwner:
         node_outputs = []
         for node in eligible_nodes:
             node_datum = NodeDatum(
-                node_state=NodeState(nodeOperator=node, nodeFeed=Nothing())
+                node_state=NodeState(ns_operator=node, ns_feed=Nothing())
             )
             node_output = TransactionOutput(
                 self.oracle_addr,
@@ -694,23 +661,3 @@ class OracleOwner:
             builder.add_script_input(
                 node_utxo, script=self.script_utxo, redeemer=deepcopy(redeemer)
             )
-
-    def get_plutus_script(self, scripthash: ScriptHash) -> PlutusV2Script:
-        """function to get plutus script and verify it's script hash"""
-        plutus_script = self.chainquery.context._get_script(str(scripthash))
-        if plutus_script_hash(plutus_script) != scripthash:
-            plutus_script = PlutusV2Script(cbor2.dumps(plutus_script))
-        if plutus_script_hash(plutus_script) == scripthash:
-            return plutus_script
-        else:
-            print("script hash mismatch")
-
-    def get_reference_script_utxo(self) -> UTxO:
-        """function to get reference script utxo"""
-        utxos = self.chainquery.context.utxos(self.oracle_addr)
-        if len(utxos) > 0:
-            for utxo in utxos:
-                if utxo.input == self.reference_script_input:
-                    script = self.get_plutus_script(self.oracle_script_hash)
-                    utxo.output.script = script
-                    return utxo

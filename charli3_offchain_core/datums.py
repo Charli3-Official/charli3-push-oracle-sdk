@@ -10,8 +10,8 @@ class DataFeed(PlutusData):
     """represents Data Feed of Node State"""
 
     CONSTR_ID = 0
-    dfValue: int
-    dfLastUpdate: int
+    df_value: int
+    df_last_update: int
 
 
 @dataclass
@@ -60,8 +60,8 @@ class NodeState(PlutusData):
     """represents Node State of Node Datum"""
 
     CONSTR_ID = 0
-    nodeOperator: bytes
-    nodeFeed: Union[PriceFeed, Nothing]
+    ns_operator: bytes
+    ns_feed: Union[PriceFeed, Nothing]
 
 
 @dataclass
@@ -101,7 +101,7 @@ class OracleSettings(PlutusData):
     os_aggregate_time: int
     os_aggregate_change: int
     os_node_fee_price: PriceRewards
-    os_mad_multiplier: int
+    os_iqr_multiplier: int
     os_divergence: int
     os_platform_pkh: bytes
 
@@ -116,7 +116,7 @@ class AggState(PlutusData):
     """Agg State parameters"""
 
     CONSTR_ID = 0
-    agSettings: OracleSettings
+    ag_settings: OracleSettings
 
 
 @dataclass
