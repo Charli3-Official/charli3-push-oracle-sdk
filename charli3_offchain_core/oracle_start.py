@@ -71,10 +71,12 @@ class OracleStart:
         self.c3_token_hash = c3_token_hash
         self.c3_token_name = c3_token_name
 
-    def start_oracle(self, initial_c3_amount: int):
+    async def start_oracle(self, initial_c3_amount: int):
         """Start oracle"""
         # Create a locking script that hold oracle script and also mints oracle NFT
-        oracle_owner = OwnerScript(self.network, self.chain_query, self.verification_key)
+        oracle_owner = OwnerScript(
+            self.network, self.chain_query, self.verification_key
+        )
         owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
         owner_script_hash = owner_script.hash()
         c3_asset = MultiAsset(
@@ -135,7 +137,7 @@ class OracleStart:
         # Prepare each datum
         for node in self.node_pkh_list:
             node_datum = NodeDatum(
-                node_state=NodeState(nodeOperator=node, nodeFeed=Nothing())
+                node_state=NodeState(ns_operator=node, ns_feed=Nothing())
             )
             node_reward_list.append(RewardInfo(reward_address=node, reward_amount=0))
             node_output = TransactionOutput(
@@ -155,8 +157,10 @@ class OracleStart:
         builder.add_output(oracle_output)
 
         # Prepare aggstate datum
-        self.oracle_settings.os_node_list = IndefiniteList(self.oracle_settings.os_node_list)
-        aggstate_datum = AggDatum(aggstate=AggState(agSettings=self.oracle_settings))
+        self.oracle_settings.os_node_list = IndefiniteList(
+            self.oracle_settings.os_node_list
+        )
+        aggstate_datum = AggDatum(aggstate=AggState(ag_settings=self.oracle_settings))
         aggstate_output = TransactionOutput(
             self.oracle_address,
             Value(3000000, aggstate_nft + c3_asset),
@@ -165,10 +169,14 @@ class OracleStart:
         builder.add_output(aggstate_output)
 
         # Prepare reward datum
-        reward_datum = RewardDatum(reward_state=OracleReward(
-            node_reward_list=node_reward_list,
-            platform_reward= RewardInfo(bytes(self.oracle_settings.os_platform_pkh), 0),
-        ))
+        reward_datum = RewardDatum(
+            reward_state=OracleReward(
+                node_reward_list=node_reward_list,
+                platform_reward=RewardInfo(
+                    bytes(self.oracle_settings.os_platform_pkh), 0
+                ),
+            )
+        )
         reward_output = TransactionOutput(
             self.oracle_address,
             Value(3000000, reward_nft),
@@ -176,40 +184,6 @@ class OracleStart:
         )
         builder.add_output(reward_output)
 
-        self.submit_tx_builder(builder)
-
-    def _process_common_inputs(self, builder: TransactionBuilder):
-        builder.add_input_address(self.address)
-        builder.add_output(TransactionOutput(self.address, 5000000))
-
-        non_nft_utxo = self._get_or_create_collateral()
-
-        if non_nft_utxo is not None:
-            builder.collaterals.append(non_nft_utxo)
-            builder.required_signers = [self.pub_key_hash]
-
-            return builder
-        else:
-            raise Exception("Unable to find or create collateral.")
-
-    def _get_or_create_collateral(self):
-        non_nft_utxo = self.chain_query.find_collateral(self.address)
-
-        if non_nft_utxo is None:
-            self.chain_query.create_collateral(self.address, self.signing_key)
-            non_nft_utxo = self.chain_query.find_collateral(self.address)
-
-        return non_nft_utxo
-
-    def submit_tx_builder(self, builder: TransactionBuilder):
-        """adds collateral and signers to tx, sign and submit tx."""
-        builder = self._process_common_inputs(builder)
-        signed_tx = builder.build_and_sign(
-            [self.signing_key], change_address=self.address
+        await self.chain_query.submit_tx_builder(
+            builder, self.signing_key, self.address
         )
-
-        try:
-            self.chain_query.submit_tx_with_print(signed_tx)
-            print("Transaction submitted successfully.")
-        except Exception as err:
-            print("Error submitting transaction: ", err)

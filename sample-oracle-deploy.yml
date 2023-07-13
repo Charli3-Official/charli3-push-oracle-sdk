@@ -26,6 +26,6 @@ oracle_settings:
     node_fee: 10
     aggregate_fee: 20
     platform_fee: 10
-  os_mad_multiplier: 20000
+  os_iqr_multiplier: 2
   os_divergence: 1500
   os_platform_pkh: "1a550d57572584e1add125b5712f709ac3b9828ad86581a4759022ba"

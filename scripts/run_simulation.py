@@ -1,5 +1,5 @@
 """Run simulation of the C3 protocol."""
-import time
+import asyncio
 import yaml
 from pycardano import (
     Network,
@@ -10,9 +10,8 @@ from pycardano import (
     AssetName,
     ExtendedSigningKey,
     HDWallet,
+    BlockFrostChainContext,
 )
-from charli3_offchain_core.datums import *
-from charli3_offchain_core.redeemers import *
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.node import Node
 
@@ -23,9 +22,16 @@ network = Network.MAINNET
 if config["network"] == "testnet":
     network = Network.TESTNET
 
+blockfrost_base_url = config["chain_query"]["base_url"]
+blockfrost_project_id = config["chain_query"]["token_id"]
+
+blockfrost_context = BlockFrostChainContext(
+    blockfrost_project_id,
+    base_url=blockfrost_base_url,
+)
+
 context = ChainQuery(
-    config["chain_query"]["token_id"],
-    base_url=config["chain_query"]["base_url"],
+    blockfrost_context,
 )
 nft_hash = config["oracle_info"]["minting_nft_hash"]
 
@@ -69,18 +75,31 @@ for i, update in enumerate(updates):
     print(node_pub_key_hash)
     nodes.append(node)
 
-# Update all nodes in sequence
-for i, node in enumerate(nodes):
-    node.update(updates[i]["update"])
-    # Check if this is the last update
-    if i == len(nodes) - 1:
-        time.sleep(30)
-        print("Aggregating...")
-        node.aggregate()
 
-# Wait for all nodes to aggregate
-time.sleep(30)
-# Collect all nodes with 20 seconds pause in between
-for node in nodes:
-    node.collect(node.address)
-    time.sleep(20)
+async def main():
+    """Run simulation."""
+    # Create tasks for all updates
+    update_tasks = [
+        node.update(update["update"]) for node, update in zip(nodes, updates)
+    ]
+
+    # Run all updates in parallel
+    await asyncio.gather(*update_tasks)
+
+    # After all updates are done, sleep for a while
+    await asyncio.sleep(30)
+
+    # Aggregate last node
+    print("Aggregating...")
+    await nodes[-1].aggregate()
+
+    # Wait for all nodes to aggregate
+    await asyncio.sleep(30)
+    # Collect all nodes with 20 seconds pause in between
+    for node in nodes:
+        await node.collect(node.address)
+        await asyncio.sleep(20)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

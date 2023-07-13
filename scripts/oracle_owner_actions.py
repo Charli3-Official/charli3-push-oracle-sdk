@@ -1,4 +1,5 @@
 """A CLI for managing the oracle owner actions."""
+import asyncio
 import click
 import yaml
 from pycardano import (
@@ -10,12 +11,16 @@ from pycardano import (
     MultiAsset,
     ScriptHash,
     AssetName,
+    BlockFrostChainContext,
 )
 
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.utils.logging_config import logging
 
+
+logger = logging.getLogger("oracle_owner_actions")
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -37,9 +42,16 @@ def setup(ctx, config_file):
     if oracle_owner_config["network"] == "testnet":
         network = Network.TESTNET
 
+    blockfrost_base_url = oracle_owner_config["chain_query"]["base_url"]
+    blockfrost_project_id = oracle_owner_config["chain_query"]["token_id"]
+
+    blockfrost_context = BlockFrostChainContext(
+        blockfrost_project_id,
+        base_url=blockfrost_base_url,
+    )
+
     chain_query = ChainQuery(
-        oracle_owner_config["chain_query"]["token_id"],
-        base_url=oracle_owner_config["chain_query"]["base_url"],
+        blockfrost_context,
     )
 
     hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
@@ -72,7 +84,7 @@ def setup(ctx, config_file):
         chain_query,
         spend_vk,
     ).mk_owner_script(script_start_slot)
-    print("Owner address:", owner_addr)
+    logger.info("Owner address: %s", owner_addr)
 
     # (Rest of your setup code here...)
     oracle_owner = OracleOwner(
@@ -102,15 +114,13 @@ def add_nodes(ctx):
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
     nodes_to_add = []
     while True:
-        node = click.prompt(
-            "Enter a node to add or 'q' to quit",
-            default='q'
-        )
-        if node == 'q':
+        node = click.prompt("Enter a node to add or 'q' to quit", default="q")
+        if node == "q":
             break
         nodes_to_add.append(node)
     if nodes_to_add:
-        oracle_owner.add_nodes(nodes_to_add)
+        asyncio.run(oracle_owner.add_nodes(nodes_to_add))
+        logger.info("Nodes added: %s", nodes_to_add)
 
 @cli.command()
 @click.pass_context
@@ -119,15 +129,13 @@ def remove_nodes(ctx):
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
     nodes_to_remove = []
     while True:
-        node = click.prompt(
-            "Enter a node to remove or 'q' to quit",
-            default='q'
-        )
-        if node == 'q':
+        node = click.prompt("Enter a node to remove or 'q' to quit", default="q")
+        if node == "q":
             break
         nodes_to_remove.append(node)
     if nodes_to_remove:
-        oracle_owner.remove_nodes(nodes_to_remove)
+        asyncio.run(oracle_owner.remove_nodes(nodes_to_remove))
+        logger.info("Nodes removed: %s", nodes_to_remove)
 
 
 @cli.command()
@@ -136,7 +144,8 @@ def remove_nodes(ctx):
 def add_funds(ctx, funds_to_add):
     """Add funds to the oracle."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    oracle_owner.add_funds(funds_to_add)
+    asyncio.run(oracle_owner.add_funds(funds_to_add))
+    logger.info("Funds added: %s", funds_to_add)
 
 
 @cli.command()
@@ -144,7 +153,8 @@ def add_funds(ctx, funds_to_add):
 def oracle_close(ctx):
     """Close the oracle."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    oracle_owner.oracle_close()
+    asyncio.run(oracle_owner.oracle_close())
+    logger.info("Oracle closed.")
 
 
 @cli.command()
@@ -152,9 +162,8 @@ def oracle_close(ctx):
 def platform_collect(ctx):
     """Collect the oracle's platform rewards."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    oracle_owner.platform_collect()
-
-
+    asyncio.run(oracle_owner.platform_collect())
+    logger.info("Platform rewards collected.")
 
 
 @cli.command()
@@ -162,7 +171,8 @@ def platform_collect(ctx):
 def create_reference_script(ctx):
     """Create the reference script."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    oracle_owner.create_reference_script()
+    asyncio.run(oracle_owner.create_reference_script())
+    logger.info("Reference script created.")
 
 
 @cli.command()
@@ -194,9 +204,7 @@ def edit_settings(ctx):
 
         setting_option = click.prompt(
             "Please enter the setting number or 'q' to finish",
-            type=click.Choice(
-                list(SETTINGS_MAP.keys()) + ["q"], case_sensitive=False
-            ),
+            type=click.Choice(list(SETTINGS_MAP.keys()) + ["q"], case_sensitive=False),
         )
 
         if setting_option == "q":
@@ -218,11 +226,11 @@ def edit_settings(ctx):
         changes_made = True
 
     if changes_made:
-        oracle_owner.edit_settings(ag_settings)
+        asyncio.run(oracle_owner.edit_settings(ag_settings))
         click.echo("Settings have been updated.")
     else:
         click.echo("No changes were made.")
 
 
 if __name__ == "__main__":
-    cli() # pylint: disable=E1120
+    cli()  # pylint: disable=E1120

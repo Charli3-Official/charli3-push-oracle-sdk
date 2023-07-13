@@ -8,7 +8,6 @@ oracle_owner:
   minting_nft_hash: "d9c85fbc86b4291ef10d659ce1b36f48d0027c97f7e3cdaffb060a83"
   c3_token_hash: "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
   c3_token_name: "PAYMENTTOKEN"
-  script_start_slot: 29985360
 
 updates:
   - mnemonic: "your mnemonic here 1"

@@ -1,4 +1,5 @@
 """Deploy oracle on Cardano blockchain"""
+import asyncio
 import zipfile
 import os
 import subprocess
@@ -14,11 +15,13 @@ from pycardano import (
     ScriptHash,
     AssetName,
     PlutusV2Script,
+    BlockFrostChainContext,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.owner_script import OwnerScript
 from charli3_offchain_core.oracle_start import OracleStart
 from charli3_offchain_core.datums import OracleSettings, PriceRewards
+from charli3_offchain_core.utils.logging_config import logging
 
 
 def generate_validator_arguments(file_name, arguments):
@@ -104,6 +107,7 @@ def unzip_and_execute_binary(
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger("oracle_deploy")
     # Load configuration from YAML file
     with open("oracle_deploy.yml", "r") as ymlfile:
         config = yaml.safe_load(ymlfile)
@@ -114,9 +118,16 @@ if __name__ == "__main__":
         network = Network.TESTNET
     elif config["network"] == "MAINNET":
         network = Network.MAINNET
+    blockfrost_base_url = config["chain_query"]["base_url"]
+    blockfrost_project_id = config["chain_query"]["token_id"]
+
+    blockfrost_context = BlockFrostChainContext(
+        blockfrost_project_id,
+        base_url=blockfrost_base_url,
+    )
+
     chain_query = ChainQuery(
-        config["chain_query"]["token_id"],
-        base_url=config["chain_query"]["base_url"],
+        blockfrost_context,
     )
     hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
     hdwallet_spend = hdwallet.derive_from_path("m/1852'/1815'/0'/0/0")
@@ -137,8 +148,12 @@ if __name__ == "__main__":
     native_script = owner_minting_script.mk_owner_script(script_start_slot)
     c3_token_hash = ScriptHash.from_primitive(config["c3_token_hash"])
     c3_token_name = AssetName(config["c3_token_name"].encode())
-    print(owner_addr)
-    print(owner_minting_script.print_start_params(script_start_slot))
+
+    logger.info("Owner address: %s", owner_addr)
+    logger.info(
+        "Owner minting script params: %s",
+        owner_minting_script.print_start_params(script_start_slot),
+    )
 
     oracle_script = unzip_and_execute_binary(
         file_name="binary/serialized.zip",
@@ -167,7 +182,7 @@ if __name__ == "__main__":
             ],
             platform_fee=config["oracle_settings"]["os_node_fee_price"]["platform_fee"],
         ),
-        os_mad_multiplier=config["oracle_settings"]["os_mad_multiplier"],
+        os_iqr_multiplier=config["oracle_settings"]["os_iqr_multiplier"],
         os_divergence=config["oracle_settings"]["os_divergence"],
         os_platform_pkh=bytes.fromhex(config["oracle_settings"]["os_platform_pkh"]),
     )
@@ -183,4 +198,4 @@ if __name__ == "__main__":
         c3_token_hash=c3_token_hash,
         c3_token_name=c3_token_name,
     )
-    start.start_oracle(config["initial_c3_amount"])
+    asyncio.run(start.start_oracle(config["initial_c3_amount"]))

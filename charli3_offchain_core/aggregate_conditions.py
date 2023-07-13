@@ -3,16 +3,16 @@ from typing import Tuple, List
 from pycardano import IndefiniteList, UTxO
 from charli3_offchain_core.datums import (
     OracleSettings,
-    PriceFeed,
-    PriceData,
-    DataFeed,
     OracleDatum,
     NodeDatum,
     Nothing,
+    PriceRewards,
 )
 from charli3_offchain_core.consensus import aggregation
+from charli3_offchain_core.utils.logging_config import logging
 
 factor_resolution: int = 10000
+logger = logging.getLogger("aggregation")
 
 
 def check_oracle_settings(oset: OracleSettings) -> bool:
@@ -23,8 +23,8 @@ def check_oracle_settings(oset: OracleSettings) -> bool:
         and check_valid_percentage(oset.os_aggregate_change)
         and check_positive(oset.os_updated_node_time)
         and check_positive(oset.os_aggregate_time)
-        and check_positive(oset.os_node_fee_price)
-        and check_positive(oset.os_mad_multiplier)
+        and check_non_negative(oset.os_node_fee_price)
+        and check_positive(oset.os_iqr_multiplier)
         and check_positive(oset.os_divergence)
     )
 
@@ -44,6 +44,14 @@ def check_positive(value: int) -> bool:
     return value > 0
 
 
+def check_non_negative(prewards: PriceRewards) -> bool:
+    """Check non negative values as payment fees"""
+    return all(
+        value >= 0
+        for value in [prewards.node_fee, prewards.aggregate_fee, prewards.platform_fee]
+    )
+
+
 def check_feed_last_update(
     upd_node_time: int, ofeed: OracleDatum, curr_time: int, node_feed: NodeDatum
 ) -> bool:
@@ -51,20 +59,23 @@ def check_feed_last_update(
     Check if the last update of a data feed succeeded after the last aggregation and
     it's inside the node time expiry window.
     """
-    if not isinstance(node_feed.node_state.nodeFeed, Nothing):
-        dfeed = node_feed.node_state.nodeFeed.df
+    if not isinstance(node_feed.node_state.ns_feed, Nothing):
+        dfeed = node_feed.node_state.ns_feed.df
         if (ofeed.price_data is None) or (
-            dfeed.dfLastUpdate > ofeed.price_data.get_timestamp()
+            dfeed.df_last_update > ofeed.price_data.get_timestamp()
         ):
-            node_update_range = (dfeed.dfLastUpdate, dfeed.dfLastUpdate + upd_node_time)
+            node_update_range = (
+                dfeed.df_last_update,
+                dfeed.df_last_update + upd_node_time,
+            )
 
             if node_update_range[0] <= curr_time <= node_update_range[1]:
                 return True
             else:
-                print("Old node feed")
+                logger.error("Old node feed")
                 return False
         else:
-            print("Old aggregated feed")
+            logger.error("Old aggregated feed")
             return False
 
 
@@ -82,7 +93,7 @@ def check_agg_time(oset: OracleSettings, ofeed: OracleDatum, curr_time: int) -> 
         last_agg_feed_time = ofeed.price_data.get_timestamp()
         # check if aggregated time window is expired or not.
         if last_agg_feed_time + oset.os_aggregate_time > curr_time > last_agg_feed_time:
-            print("Aggregation time not expired.")
+            logger.error("Aggregation time not expired.")
             return False
     return True
 
@@ -106,7 +117,7 @@ def check_agg_change(oset: OracleSettings, ofeed: OracleDatum, new_agg: int) -> 
         if updated_percentage >= oset.os_aggregate_change:
             return True
         else:
-            print(
+            logger.error(
                 "New aggregation feed didn't change more than the specified threshold."
             )
             return False
@@ -120,10 +131,10 @@ def check_aggregator_permission(oset: OracleSettings, pkh: bytes) -> bool:
     :return: True if permission is valid else False
     """
     if oset.os_node_list is None:
-        print("os_node_list should not be None.")
+        logger.error("os_node_list should not be None.")
         return False
     elif pkh not in oset.os_node_list:
-        print("PublicKey has no aggregator permission.")
+        logger.error("PublicKey has no aggregator permission.")
         return False
     else:
         return True
@@ -138,9 +149,8 @@ def check_aggregation_update_time(
     if check_agg_time(oset, ofeed, curr_time) or check_agg_change(oset, ofeed, new_agg):
         return True
     else:
-        print(
-            "Aggregate value conditions don't hold:\n- Time Oracle feed not old",
-            "Oracle feed didn't change enough",
+        logger.error(
+            "Aggregate value conditions don't hold:\n- Time Oracle feed not old Oracle feed didn't change enough",
         )
         return False
 
@@ -184,16 +194,16 @@ def check_node_consensus_condition(
     * The aggregated feed value.
     """
     updated_nodes_value = [
-        node.output.datum.node_state.nodeFeed.df.dfValue for node in nodes
+        node.output.datum.node_state.ns_feed.df.df_value for node in nodes
     ]
     agg_value, _, lower, upper = aggregation(
-        oset.os_mad_multiplier, oset.os_divergence, updated_nodes_value
+        oset.os_iqr_multiplier, oset.os_divergence, updated_nodes_value
     )
-    print(updated_nodes_value, lower, upper)
+
     valid_nodes = [
         node
         for node in nodes
-        if lower <= node.output.datum.node_state.nodeFeed.df.dfValue <= upper
+        if lower <= node.output.datum.node_state.ns_feed.df.df_value <= upper
     ]
 
     return valid_nodes, agg_value
@@ -218,15 +228,15 @@ def aggregation_conditions(
                 return (valid_nodes_with_consensus, agg_value)
 
             else:
-                print(
+                logger.error(
                     "The aggregation is not being performed within the specified time window"
                 )
                 return [], 0
         else:
-            print("Lower percentage of nodes to do the aggregation")
+            logger.error("Lower percentage of nodes to do the aggregation")
             return [], 0
     else:
-        print(
+        logger.error(
             "The specified public key hash does not have permission to perform an aggregation"
         )
         return [], 0
