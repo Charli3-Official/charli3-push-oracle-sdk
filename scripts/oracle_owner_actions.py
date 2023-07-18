@@ -22,6 +22,7 @@ from charli3_offchain_core.utils.logging_config import logging
 
 logger = logging.getLogger("oracle_owner_actions")
 
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
@@ -121,6 +122,7 @@ def add_nodes(ctx):
     if nodes_to_add:
         asyncio.run(oracle_owner.add_nodes(nodes_to_add))
         logger.info("Nodes added: %s", nodes_to_add)
+
 
 @cli.command()
 @click.pass_context

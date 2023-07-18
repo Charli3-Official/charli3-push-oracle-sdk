@@ -16,6 +16,7 @@ from pycardano import (
     AssetName,
     PlutusV2Script,
     BlockFrostChainContext,
+    VerificationKeyHash,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.owner_script import OwnerScript
@@ -26,12 +27,21 @@ from charli3_offchain_core.utils.logging_config import logging
 
 def generate_validator_arguments(file_name, arguments):
     """Generate the validator arguments in YAML format"""
-    str_arguments = {
-        key: value.to_string() if hasattr(value, "to_string") else str(value)
-        for key, value in arguments.items()
-    }
+    str_arguments = {}
+    for key, value in arguments.items():
+        if isinstance(
+            value, (ScriptHash, VerificationKeyHash)
+        ):  # add other classes if necessary
+            str_arguments[key] = (
+                value.to_sting() if hasattr(value, "to_string") else str(value)
+            )
+        else:
+            str_arguments[key] = value
+
     with open(file_name, "w") as file:
-        yaml.dump(str_arguments, file)
+        yaml.safe_dump(
+            str_arguments, file, default_flow_style=False, allow_unicode=True
+        )
 
 
 def unzip_and_execute_binary(
@@ -42,6 +52,8 @@ def unzip_and_execute_binary(
     oracle_mp,
     payment_mp,
     payment_tn,
+    rate_tn=None,
+    rate_mp=None,
     args=None,
 ) -> PlutusV2Script:
     """Unzip the binary file and execute it and return the Plutus script"""
@@ -61,6 +73,8 @@ def unzip_and_execute_binary(
         "nodeFeed_tn": "NodeFeed",
         "payment_mp": payment_mp,
         "payment_tn": payment_tn,
+        "rate_tn": rate_tn,
+        "rate_mp": rate_mp,
     }
     generate_validator_arguments(
         os.path.join(os.getcwd(), "validator-argument.yml"), validator_arguments
@@ -155,6 +169,13 @@ if __name__ == "__main__":
         owner_minting_script.print_start_params(script_start_slot),
     )
 
+    c3_oracle_rate_token_name = config.get("exchange_rate_token_name") or None
+    c3_oracle_rate_token_hash = (
+        ScriptHash.from_primitive(config["exchange_rate_token_hash"])
+        if config["exchange_rate_token_hash"]
+        else None
+    )
+
     oracle_script = unzip_and_execute_binary(
         file_name="binary/serialized.zip",
         unzip_dir="binary",
@@ -163,6 +184,8 @@ if __name__ == "__main__":
         oracle_mp=native_script.hash(),
         payment_mp=c3_token_hash,
         payment_tn=config["c3_token_name"],
+        rate_tn=c3_oracle_rate_token_name,
+        rate_mp=c3_oracle_rate_token_hash,
         args=["-a", "-v"],
     )
 

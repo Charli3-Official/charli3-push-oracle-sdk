@@ -33,11 +33,15 @@ from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_checks import (
     check_utxo_asset_balance,
     get_oracle_utxos_with_datums,
+    c3_get_rate,
 )
 from charli3_offchain_core.aggregate_conditions import aggregation_conditions
 from charli3_offchain_core.utils.logging_config import logging
 
 logger = logging.getLogger("Node")
+
+# CONSTANT
+COIN_PRECISION = 1000000
 
 
 class Node:
@@ -57,6 +61,8 @@ class Node:
         c3_token_hash: ScriptHash,
         c3_token_name: AssetName,
         reference_script_input: Union[None, TransactionInput] = None,
+        oracle_rate_addr: Union[Address, None] = None,
+        oracle_rate_nft: Union[MultiAsset, None] = None,
     ) -> None:
         self.network = network
         self.chain_query = chain_query
@@ -75,6 +81,8 @@ class Node:
         self.c3_token_name = c3_token_name
         self.reference_script_input = reference_script_input
         self.oracle_script_hash = self.oracle_addr.payment_part
+        self.oracle_rate_addr = oracle_rate_addr
+        self.rate_nft = oracle_rate_nft
 
     async def update(self, rate: int) -> None:
         """build's partial node update tx.
@@ -114,7 +122,9 @@ class Node:
             node_own_utxo, script=script_utxo, redeemer=node_update_redeemer
         ).add_output(node_own_utxo.output)
 
-        await self.chain_query.submit_tx_builder(builder, self.signing_key, self.address)
+        await self.chain_query.submit_tx_builder(
+            builder, self.signing_key, self.address
+        )
 
     async def aggregate(
         self,
@@ -132,6 +142,20 @@ class Node:
                 False: if transaction is failed or dropped from the mempool.
 
         """
+        c3_oracle_rate_feed = None
+        c3_oracle_rate_utxo = None
+
+        c3_oracle_rate_utxos = (
+            await self.chain_query.get_utxos(self.oracle_rate_addr)
+            if self.oracle_rate_addr
+            else None
+        )
+
+        if c3_oracle_rate_utxos is not None:
+            (c3_oracle_rate_feed, c3_oracle_rate_utxo) = c3_get_rate(
+                c3_oracle_rate_utxos, self.rate_nft
+            )
+
         oracle_utxos = await self.chain_query.get_utxos(self.oracle_addr)
         curr_time_ms = round(time.time_ns() * 1e-6)
         (
@@ -151,9 +175,23 @@ class Node:
         reward_datum: RewardDatum = reward_utxo.output.datum
         total_nodes = len(aggstate_datum.aggstate.ag_settings.os_node_list)
         fees = aggstate_datum.aggstate.ag_settings.os_node_fee_price
-        min_c3_required = (
-            fees.node_fee * total_nodes + fees.aggregate_fee + fees.platform_fee
-        )
+
+        def scale_reward(val: int) -> int:
+            assert (
+                c3_oracle_rate_feed is not None
+            ), "oracle_rate_feed should not be None"
+            return (val * c3_oracle_rate_feed) // COIN_PRECISION
+
+        if not c3_oracle_rate_feed:
+            min_c3_required = (
+                fees.node_fee * total_nodes + fees.aggregate_fee + fees.platform_fee
+            )
+        else:
+            min_c3_required = (
+                scale_reward(fees.node_fee) * total_nodes
+                + scale_reward(fees.aggregate_fee)
+                + scale_reward(fees.platform_fee)
+            )
 
         # Calculations and Conditions check for aggregation.
         if check_utxo_asset_balance(
@@ -167,11 +205,19 @@ class Node:
                 nodes_utxos,
             )
             if len(valid_nodes) > 0 and set(valid_nodes).issubset(set(nodes_utxos)):
-                c3_fees = (
-                    len(valid_nodes) * fees.node_fee
-                    + fees.aggregate_fee
-                    + fees.platform_fee
-                )
+                if not c3_oracle_rate_feed:
+                    c3_fees = (
+                        len(valid_nodes) * fees.node_fee
+                        + fees.aggregate_fee
+                        + fees.platform_fee
+                    )
+                else:
+                    c3_fees = (
+                        len(valid_nodes) * scale_reward(fees.node_fee)
+                        + scale_reward(fees.aggregate_fee)
+                        + scale_reward(fees.platform_fee)
+                    )
+
                 oracle_feed_expiry = (
                     curr_time_ms + aggstate_datum.aggstate.ag_settings.os_aggregate_time
                 )
@@ -223,17 +269,27 @@ class Node:
                     node_operator = utxo.output.datum.node_state.ns_operator
                     for reward_info in reward_datum.reward_state.node_reward_list:
                         if reward_info.reward_address == node_operator:
-                            reward_info.reward_amount += fees.node_fee
+                            reward_info.reward_amount += (
+                                fees.node_fee
+                                if not c3_oracle_rate_feed
+                                else scale_reward(fees.node_fee)
+                            )
                         if (
                             reward_info.reward_address == self.node_operator
                             and not aggregate_fee_added
                         ):
-                            reward_info.reward_amount += fees.aggregate_fee
+                            reward_info.reward_amount += (
+                                fees.aggregate_fee
+                                if not c3_oracle_rate_feed
+                                else scale_reward(fees.aggregate_fee)
+                            )
                             aggregate_fee_added = True
 
                 # add platform fee to reward datum
                 reward_datum.reward_state.platform_reward.reward_amount += (
                     fees.platform_fee
+                    if not c3_oracle_rate_feed
+                    else scale_reward(fees.platform_fee)
                 )
                 reward_tx_output = deepcopy(reward_utxo.output)
 
@@ -259,11 +315,17 @@ class Node:
                     reward_utxo, redeemer=deepcopy(aggregate_redeemer)
                 ).add_output(reward_tx_output)
 
+                # Adding reference oracle rate utxo
+                if c3_oracle_rate_utxo:
+                    builder.reference_inputs.add(c3_oracle_rate_utxo.input)
+
                 # adding node utxos as reference inputs,
                 # all node utxos referenced as reference inputs.
                 builder.reference_inputs.update(nodes_utxos)
 
-                await self.chain_query.submit_tx_builder(builder, self.signing_key, self.address)
+                await self.chain_query.submit_tx_builder(
+                    builder, self.signing_key, self.address
+                )
             else:
                 logger.error(
                     "The required minimum number of nodes for aggregation has not been met. \
@@ -318,7 +380,9 @@ class Node:
             .add_output(TransactionOutput(reward_address, Value(2000000, c3_asset)))
         )
 
-        await self.chain_query.submit_tx_builder(builder, self.signing_key, self.address)
+        await self.chain_query.submit_tx_builder(
+            builder, self.signing_key, self.address
+        )
 
     def get_node_own_utxo(self, oracle_utxos: List[UTxO]) -> UTxO:
         """returns node's own utxo from list of oracle UTxOs
