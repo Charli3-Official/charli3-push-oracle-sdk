@@ -1,4 +1,4 @@
-# charli3-pycardano
+# Charli3 Offchain Core
 
 This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It now leverages the charli3-offchain-core package, which contains shared code that is used across different private repositories of the Charli3 oracle network.
 ### Compatible charli3-oracle-prototype Branches
@@ -12,11 +12,11 @@ This repository explores the use of pycardano in the Charli3 Oracle implementati
 ### Installation
 1. Clone the repository:
 ```bash
-git clone https://github.com/Charli3-Official/charli3-pycardano.git
+git clone https://github.com/Charli3-Official/charli3-offchain-core.git
 ```
 2. Change to the repository's directory:
 ```bash
-cd charli3-pycardano
+cd charli3-offchain-core
 ```
 3. Install dependencies using Poetry:
 ```bash
