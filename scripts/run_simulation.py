@@ -1,6 +1,7 @@
 """Run simulation of the C3 protocol."""
 import asyncio
 import yaml
+from typing import Union
 from pycardano import (
     Network,
     Address,
@@ -43,6 +44,33 @@ aggstate_nft = MultiAsset.from_primitive({nft_hash: {b"AggState": 1}})
 oracle_nft = MultiAsset.from_primitive({nft_hash: {b"OracleFeed": 1}})
 reward_nft = MultiAsset.from_primitive({nft_hash: {b"Reward": 1}})
 
+
+def c3_create_oracle_rate_nft(token_name, minting_policy) -> Union[MultiAsset, None]:
+    if token_name and minting_policy:
+        return MultiAsset.from_primitive(
+            {minting_policy.payload: {bytes(token_name, "utf-8"): 1}}
+        )
+    else:
+        return None
+
+
+c3_oracle_rate_nft_hash = (
+    ScriptHash.from_primitive(config["oracle_info"]["c3_rate_nft_hash"])
+    if config["oracle_info"]["c3_rate_nft_hash"]
+    else None
+)
+
+c3_oracle_rate_nft_name = config["oracle_info"]["c3_rate_nft_name"] or None
+c3_oracle_rate_nft = c3_create_oracle_rate_nft(
+    c3_oracle_rate_nft_name, c3_oracle_rate_nft_hash
+)
+
+c3_oracle_rate_address = (
+    Address.from_primitive(config["oracle_info"]["c3_oracle_rate_address"])
+    if config["oracle_info"]["c3_oracle_rate_address"]
+    else None
+)
+
 c3_token_hash = ScriptHash.from_primitive(config["oracle_info"]["c3_token_hash"])
 c3_token_name = AssetName(config["oracle_info"]["c3_token_name"].encode())
 
@@ -71,6 +99,9 @@ for i, update in enumerate(updates):
         oracle_addr,
         c3_token_hash,
         c3_token_name,
+        None,
+        c3_oracle_rate_address,
+        c3_oracle_rate_nft,
     )
     print(node_pub_key_hash)
     nodes.append(node)

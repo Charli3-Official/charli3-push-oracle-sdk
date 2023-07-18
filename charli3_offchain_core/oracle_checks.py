@@ -7,6 +7,7 @@ from pycardano import (
     IndefiniteList,
     ScriptHash,
     AssetName,
+    Address,
 )
 from charli3_offchain_core.datums import (
     NodeDatum,
@@ -209,6 +210,32 @@ def convert_cbor_to_node_datums(node_utxos: List[UTxO]) -> List[UTxO]:
                 utxo.output.datum = node_datum
                 result.append(utxo)
     return result
+
+
+def c3_get_oracle_rate_utxo_with_datum(
+    oracle_utxos: List[UTxO], rate_nft: MultiAsset
+) -> UTxO:
+    rate_utxo = next(
+        (utxo for utxo in oracle_utxos if utxo.output.amount.multi_asset >= rate_nft),
+        None,
+    )
+
+    try:
+        if rate_utxo.output.datum:
+            rate_utxo.output.datum = OracleDatum.from_cbor(rate_utxo.output.datum.cbor)
+    except Exception:
+        logger.error("Invalid CBOR data for OracleDatum (Exchange rate)")
+    return rate_utxo
+
+
+def c3_get_rate(oracle_rate_utxos: List[UTxO], rate_nft: MultiAsset):
+    if rate_nft and oracle_rate_utxos:
+        rate_utxo = c3_get_oracle_rate_utxo_with_datum(oracle_rate_utxos, rate_nft)
+
+        rate_datum: OracleDatum = rate_utxo.output.datum
+        return (rate_datum.price_data.get_price(), rate_utxo)
+    else:
+        return (None, None)
 
 
 def get_oracle_utxos_with_datums(
