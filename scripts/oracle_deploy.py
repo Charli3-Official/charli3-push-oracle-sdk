@@ -170,11 +170,9 @@ if __name__ == "__main__":
     )
 
     c3_oracle_rate_token_name = config.get("exchange_rate_token_name") or None
-    c3_oracle_rate_token_hash = (
-        ScriptHash.from_primitive(config["exchange_rate_token_hash"])
-        if config["exchange_rate_token_hash"]
-        else None
-    )
+    c3_oracle_rate_token_hash = config.get("exchange_rate_token_hash")
+    if c3_oracle_rate_token_hash is not None:
+        c3_oracle_rate_token_hash = ScriptHash.from_primitive(c3_oracle_rate_token_hash)
 
     oracle_script = unzip_and_execute_binary(
         file_name="binary/serialized.zip",

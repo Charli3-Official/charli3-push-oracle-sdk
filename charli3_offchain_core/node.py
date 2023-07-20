@@ -99,32 +99,36 @@ class Node:
         logger.info("node update called: %d", rate)
         oracle_utxos = await self.chain_query.get_utxos(self.oracle_addr)
         node_own_utxo = self.get_node_own_utxo(oracle_utxos)
-        time_ms = round(time.time_ns() * 1e-6)
-        new_node_feed = PriceFeed(DataFeed(rate, time_ms))
 
-        node_own_utxo.output.datum.node_state.ns_feed = new_node_feed
+        if node_own_utxo is not None:
+            time_ms = round(time.time_ns() * 1e-6)
+            new_node_feed = PriceFeed(DataFeed(rate, time_ms))
 
-        node_update_redeemer = Redeemer(NodeUpdate())
+            node_own_utxo.output.datum.node_state.ns_feed = new_node_feed
 
-        builder = TransactionBuilder(self.context)
+            node_update_redeemer = Redeemer(NodeUpdate())
 
-        script_utxo = (
-            self.chain_query.get_reference_script_utxo(
-                self.oracle_addr,
-                self.reference_script_input,
-                self.oracle_script_hash,
+            builder = TransactionBuilder(self.context)
+
+            script_utxo = (
+                self.chain_query.get_reference_script_utxo(
+                    self.oracle_addr,
+                    self.reference_script_input,
+                    self.oracle_script_hash,
+                )
+                if self.reference_script_input
+                else None
             )
-            if self.reference_script_input
-            else None
-        )
 
-        builder.add_script_input(
-            node_own_utxo, script=script_utxo, redeemer=node_update_redeemer
-        ).add_output(node_own_utxo.output)
+            builder.add_script_input(
+                node_own_utxo, script=script_utxo, redeemer=node_update_redeemer
+            ).add_output(node_own_utxo.output)
 
-        await self.chain_query.submit_tx_builder(
-            builder, self.signing_key, self.address
-        )
+            await self.chain_query.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
+        else:
+            logger.error("Node's own utxo is not found")
 
     async def aggregate(
         self,

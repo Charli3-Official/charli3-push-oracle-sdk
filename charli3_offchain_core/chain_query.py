@@ -71,6 +71,19 @@ class ChainQuery:
                     result.append(utxo)
         return result
 
+    async def get_address_balance(self, address: Address) -> int:
+        """Get the Ada balance of an address
+        Args:
+            address (Address): The address to get the balance from.
+
+        Returns:
+            int: The balance of the address in lovelaces."""
+        if self.blockfrost_context is not None:
+            response = self.blockfrost_context.api.address(str(address))
+            for i in response.amount:
+                if i.unit == "lovelace":
+                    return round(int(i.quantity) / 1000000, 2)
+
     async def get_reference_script_utxo(
         self,
         oracle_addr: Address,

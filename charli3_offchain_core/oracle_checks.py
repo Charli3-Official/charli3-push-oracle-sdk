@@ -215,6 +215,14 @@ def convert_cbor_to_node_datums(node_utxos: List[UTxO]) -> List[UTxO]:
 def c3_get_oracle_rate_utxo_with_datum(
     oracle_utxos: List[UTxO], rate_nft: MultiAsset
 ) -> UTxO:
+    """Get oracle rate utxo with datum
+
+    Args:
+        oracle_utxos: A list of UTxO objects to be filtered.
+        rate_nft: The rate NFT.
+
+    Returns:
+        A UTxO object that is valid according to the specified criteria."""
     rate_utxo = next(
         (utxo for utxo in oracle_utxos if utxo.output.amount.multi_asset >= rate_nft),
         None,
@@ -228,7 +236,20 @@ def c3_get_oracle_rate_utxo_with_datum(
     return rate_utxo
 
 
-def c3_get_rate(oracle_rate_utxos: List[UTxO], rate_nft: MultiAsset):
+def c3_get_rate(
+    oracle_rate_utxos: List[UTxO], rate_nft: MultiAsset
+) -> Tuple[float, UTxO]:
+    """
+    Get exchange rate from oracle rate utxo
+
+    Args:
+        oracle_rate_utxos: A list of UTxO objects to be filtered.
+        rate_nft: The rate NFT.
+
+    Returns:
+        A tuple containing the exchange rate and the UTxO object that is valid according to the
+        specified criteria.
+    """
     if rate_nft and oracle_rate_utxos:
         rate_utxo = c3_get_oracle_rate_utxo_with_datum(oracle_rate_utxos, rate_nft)
 
@@ -361,3 +382,53 @@ def get_oracle_datums_only(
     node_datums = [node.output.datum for node in node_utxos_with_datum]
 
     return (oracle_datum, aggstate_datum, reward_datum, node_datums)
+
+
+def get_utxo_asset_balance(
+    input_utxo: UTxO, asset_policy_id: ScriptHash, token_name: AssetName
+) -> int:
+    """Check if input UTxO has minimum asset balance.
+
+    Args:
+        input_utxo: The UTxO object to check.
+        asset_policy_id: The asset policy ID to use.
+        token_name: The token name to use.
+    Returns:
+        value
+    """
+    if input_utxo.output.amount.multi_asset is None:
+        return False
+
+    if input_utxo.output.amount.multi_asset[asset_policy_id] is None:
+        return False
+
+    if input_utxo.output.amount.multi_asset[asset_policy_id][token_name] is None:
+        return False
+
+    return int(input_utxo.output.amount.multi_asset[asset_policy_id][token_name])
+
+
+def get_feed_asset_balance(
+    utxos: List[UTxO],
+    aggstatenft: MultiAsset,
+    fee_script_hash: ScriptHash,
+    fee_asset_name: AssetName,
+) -> int:
+    """Get balance of fee asset from given UTxO with aggstatenft.
+
+    Args:
+        utxos: A list of UTxO objects to be filtered.
+        aggstatenft: The aggstate NFT.
+        fee_script_hash: The fee script hash.
+        fee_asset_name: The fee asset name.
+
+    Returns:
+        The balance of the fee asset.
+    """
+    feed_balance = 0
+    aggstate_utxo = filter_utxos_by_asset(utxos, aggstatenft)[0]
+    if aggstate_utxo is not None:
+        feed_balance = get_utxo_asset_balance(
+            aggstate_utxo, fee_script_hash, fee_asset_name
+        )
+    return feed_balance

@@ -1,7 +1,7 @@
 """Run simulation of the C3 protocol."""
 import asyncio
-import yaml
 from typing import Union
+import yaml
 from pycardano import (
     Network,
     Address,
@@ -45,7 +45,8 @@ oracle_nft = MultiAsset.from_primitive({nft_hash: {b"OracleFeed": 1}})
 reward_nft = MultiAsset.from_primitive({nft_hash: {b"Reward": 1}})
 
 
-def c3_create_oracle_rate_nft(token_name, minting_policy) -> Union[MultiAsset, None]:
+def create_c3_oracle_rate_nft(token_name, minting_policy) -> Union[MultiAsset, None]:
+    """Create C3 oracle rate NFT."""
     if token_name and minting_policy:
         return MultiAsset.from_primitive(
             {minting_policy.payload: {bytes(token_name, "utf-8"): 1}}
@@ -54,22 +55,25 @@ def c3_create_oracle_rate_nft(token_name, minting_policy) -> Union[MultiAsset, N
         return None
 
 
-c3_oracle_rate_nft_hash = (
-    ScriptHash.from_primitive(config["oracle_info"]["c3_rate_nft_hash"])
-    if config["oracle_info"]["c3_rate_nft_hash"]
-    else None
-)
+c3_oracle_rate_nft_hash = None
+if "oracle_info" in config and "c3_rate_nft_hash" in config["oracle_info"]:
+    c3_oracle_rate_nft_hash = ScriptHash.from_primitive(
+        config["oracle_info"]["c3_rate_nft_hash"]
+    )
 
-c3_oracle_rate_nft_name = config["oracle_info"]["c3_rate_nft_name"] or None
-c3_oracle_rate_nft = c3_create_oracle_rate_nft(
+c3_oracle_rate_nft_name = None
+if "oracle_info" in config and "c3_rate_nft_name" in config["oracle_info"]:
+    c3_oracle_rate_nft_name = config["oracle_info"]["c3_rate_nft_name"] or None
+
+c3_oracle_rate_nft = create_c3_oracle_rate_nft(
     c3_oracle_rate_nft_name, c3_oracle_rate_nft_hash
 )
 
-c3_oracle_rate_address = (
-    Address.from_primitive(config["oracle_info"]["c3_oracle_rate_address"])
-    if config["oracle_info"]["c3_oracle_rate_address"]
-    else None
-)
+c3_oracle_rate_address = None
+if "oracle_info" in config and "c3_oracle_rate_address" in config["oracle_info"]:
+    c3_oracle_rate_address = Address.from_primitive(
+        config["oracle_info"]["c3_oracle_rate_address"]
+    )
 
 c3_token_hash = ScriptHash.from_primitive(config["oracle_info"]["c3_token_hash"])
 c3_token_name = AssetName(config["oracle_info"]["c3_token_name"].encode())
