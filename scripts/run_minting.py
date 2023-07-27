@@ -1,4 +1,5 @@
 """script to mint tokens"""
+import asyncio
 import cbor2
 from pycardano import (
     Network,
@@ -6,16 +7,22 @@ from pycardano import (
     PaymentVerificationKey,
     PaymentSigningKey,
     PlutusV2Script,
+    BlockFrostChainContext,
 )
-from src.chain_query import ChainQuery
-from src.mint import Mint
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.mint import Mint
 
 network = Network.TESTNET
-context = ChainQuery(
-    "YOUR_TOKEN_ID_HERE",
-    base_url="https://cardano-preprod.blockfrost.io/api",
+blockfrost_base_url = "https://cardano-preprod.blockfrost.io/api"
+blockfrost_project_id = "YOUR_TOKEN_ID_HERE"
+blockfrost_context = BlockFrostChainContext(
+    blockfrost_project_id,
+    base_url=blockfrost_base_url,
 )
 
+context = ChainQuery(
+    blockfrost_context,
+)
 node_signing_key = PaymentSigningKey.load("node.skey")
 node_verification_key = PaymentVerificationKey.load("node.vkey")
 node_pub_key_hash = node_verification_key.hash()
@@ -27,4 +34,4 @@ with open("./mint_script.plutus", "r") as f:
 c3_token = Mint(
     network, context, node_signing_key, node_verification_key, plutus_script_v2
 )
-c3_token.mint_nft_with_script()
+asyncio.run(c3_token.mint_nft_with_script())

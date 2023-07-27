@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "src"
+name = "charli3-offchain-core"
 version = "0.1.0"
-description = "Experiments with Pycardano lib."
+description = "Offchain core Python package for Charli3"
 authors = ["Deep Bhatt <deep.bhatt@charli3.io>"]
 readme = "README.md"
 
@@ -14,10 +14,12 @@ click = "^8.1.3"
 pytest = "^7.2.1"
 pytest-asyncio = "^0.20.3"
 pytest-order = "^1.1.0"
+python-json-logger = "^2.0.7"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.17.4"
 black = "^23.3.0"
+ruff = "^0.0.277"
 
 [build-system]
 requires = ["poetry-core"]

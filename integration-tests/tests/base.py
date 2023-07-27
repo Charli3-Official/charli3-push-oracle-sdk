@@ -16,11 +16,11 @@ from pycardano import (
     PlutusV2Script,
     plutus_script_hash,
 )
-from src.datums import OracleSettings, PriceRewards
-from src.chain_query import ChainQuery
+from charli3_offchain_core.datums import OracleSettings, PriceRewards
+from charli3_offchain_core.chain_query import ChainQuery
 from scripts.oracle_deploy import unzip_and_execute_binary
-from src.owner_script import OwnerScript
-from src.mint import Mint
+from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.mint import Mint
 
 
 TEST_RETRIES = 6
@@ -133,7 +133,7 @@ class TestBase:
             ],
             platform_fee=config["oracle_settings"]["os_node_fee_price"]["platform_fee"],
         ),
-        os_mad_multiplier=config["oracle_settings"]["os_mad_multiplier"],
+        os_iqr_multiplier=config["oracle_settings"]["os_mad_multiplier"],
         os_divergence=config["oracle_settings"]["os_divergence"],
         os_platform_pkh=platform_6_pkh,
     )
@@ -183,11 +183,14 @@ class TestBase:
         payment_tn="tC3",
         args=["-a", "-v"],
     )
-
-    # oracle_script_path = os.path.join(dir_path, "..", "plutus_scripts", "oracleV3.cbor")
+    # oracle_script_path = os.path.join(
+    #     dir_path, "..", "plutus_scripts", "oracleV3.cbor"
+    # )
     # with open(oracle_script_path, "r") as f:
     #     script_hex = f.read()
-    #     oracle_plutus_script_v2 = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
+    #     oracle_plutus_script_v2 = PlutusV2Script(
+    #         cbor2.loads(bytes.fromhex(script_hex))
+    #     )
 
     script_hash = plutus_script_hash(oracle_plutus_script_v2)
     oracle_script_address = Address(payment_part=script_hash, network=NETWORK)
