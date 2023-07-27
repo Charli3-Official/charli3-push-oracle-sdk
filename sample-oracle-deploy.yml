@@ -10,6 +10,9 @@ c3_token_name: "PAYMENTTOKEN"
 initial_c3_amount: 1000
 plutus_file_name: "./oracleV2.plutus"
 
+exchange_rate_token_name: "Rate"
+exchange_rate_token_hash: "c6f192a236596e2bbaac5900d67e9700dec7c77d9da626c98e0ab2ac"
+
 oracle_settings:
   os_node_list:
     [
@@ -26,6 +29,6 @@ oracle_settings:
     node_fee: 10
     aggregate_fee: 20
     platform_fee: 10
-  os_mad_multiplier: 20000
+  os_iqr_multiplier: 2
   os_divergence: 1500
   os_platform_pkh: "1a550d57572584e1add125b5712f709ac3b9828ad86581a4759022ba"

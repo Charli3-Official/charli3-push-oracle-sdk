@@ -8,8 +8,8 @@ from pycardano import MultiAsset, TransactionOutput, Value, RawCBOR
 
 from .base import TEST_RETRIES, TestBase
 
-from src.oracle_start import OracleStart
-from src.owner_script import OwnerScript
+from charli3_offchain_core.oracle_start import OracleStart
+from charli3_offchain_core.owner_script import OwnerScript
 
 
 class TestDeployment(TestBase):

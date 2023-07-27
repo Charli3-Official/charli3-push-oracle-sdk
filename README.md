@@ -1,6 +1,6 @@
-# charli3-pycardano
+# Charli3 Offchain Core
 
-This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python.
+This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It now leverages the charli3-offchain-core package, which contains shared code that is used across different private repositories of the Charli3 oracle network.
 ### Compatible charli3-oracle-prototype Branches
 - [main](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/main)
 
@@ -11,17 +11,22 @@ This repository explores the use of pycardano in the Charli3 Oracle implementati
 
 ### Installation
 1. Clone the repository:
-```
-git clone https://github.com/Charli3-Official/charli3-pycardano.git
+```bash
+git clone https://github.com/Charli3-Official/charli3-offchain-core.git
 ```
 2. Change to the repository's directory:
-```
-cd charli3-pycardano
+```bash
+cd charli3-offchain-core
 ```
 3. Install dependencies using Poetry:
-```
+```bash
 poetry install
 ```
+4. To Install the `charli3-offchain-core` package. Replace `<username>` and `<token>` with your GitHub username and a personal access token that has the `read:packages` scope:
+```bash
+poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-offchain-core.git
+```
+Note: This package is hosted privately on GitHub. To install it, you need to provide your GitHub username and a personal access token that has the read:packages scope.
 
 # Oracle Deployment Guide
 
@@ -127,20 +132,49 @@ Below are the available commands:
 ## Modules
 ### Minting Tokens
 Explore the minting tokens module in the following files:
-- [src/mint.py](src/mint.py)
-- [src/run_minting.py](src/run_minting.py)
+- [charli3_offchain_core/mint.py](charli3_offchain_core/mint.py)
+- [charli3_offchain_core/run_minting.py](charli3_offchain_core/run_minting.py)
 ### Datums Implementation
 Check out the implementation of datums in Python in the following file: 
-- [src/datums.py](src/datums.py)
+- [charli3_offchain_core/datums.py](charli3_offchain_core/datums.py)
 ### Redeemers Implementation
 Check out the implementation of redeemers in Python in the following file:
-- [src/redeemers.py](src/redeemers.py)
+- [charli3_offchain_core/redeemers.py](charli3_offchain_core/redeemers.py)
 ### Node Operator Off-Chain Transactions
 Check out the implementation of Node off-chain transactions in Python in the following file: 
-- [src/node.py](src/node.py)
+- [charli3_offchain_core/node.py](charli3_offchain_core/node.py)
 ### Oracle Owner (Admin) Off-Chain Transactions
 Check out the implementation of Oracle Owner off-chain transactions in Python in the following file:
-- [src/oracle_owner.py](src/oracle_owner.py)
+- [charli3_offchain_core/oracle_owner.py](charli3_offchain_core/oracle_owner.py)
 
 ### ChainQuery 
-[Chainquery](src/chain_query.py) contains code for interacting with the Cardano blockchain.
+[Chainquery](charli3_offchain_core/chain_query.py) contains code for interacting with the Cardano blockchain.
+
+
+## Building the Package
+The `charli3-offchain-core` package uses Poetry for dependency management and building. Here are the steps to build the package:
+1. Navigate to the root directory of the repository:
+```bash
+cd charli3-offchain-core
+```
+2. To build the package, run:
+```bash
+poetry build
+```
+This will generate a .tar.gz and a .whl file in the dist/ directory, which can be distributed and installed.
+
+## Importing the Package into Other Repositories
+To import the charli3-offchain-core package into other repositories:
+
+1. Navigate to the root directory of the other repository.
+2. Make sure Poetry is installed in the current environment. If not, follow the installation guide in the [Prerequisites](#prerequisites) section.
+3. Add the `charli3-offchain-core` package using Poetry. Replace `<username>` and `<token>` with your GitHub username and a personal access token that has the `read:packages` scope:
+```bash
+poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-offchain-core.git
+```
+4. After successful installation, you can import the package into your Python files like any other Python package. For example:
+```python
+from charli3_offchain_core import mint, datums, redeemers, node
+```
+Remember to replace `<username>` and `<token>` with your actual GitHub username and token.
+

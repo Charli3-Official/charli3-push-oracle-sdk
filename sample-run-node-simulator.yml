@@ -3,12 +3,14 @@ chain_query:
   token_id: "YOUR_TOKEN_ID_HERE"
   base_url: "https://cardano-preprod.blockfrost.io/api"
 
-oracle_owner:
+oracle_info:
   oracle_addr: "addr_test1wpj8h52fqfvw98664ewc2d9lxq3yxjx8jvx7t6vntefu23gq6fcfx"
   minting_nft_hash: "d9c85fbc86b4291ef10d659ce1b36f48d0027c97f7e3cdaffb060a83"
   c3_token_hash: "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
   c3_token_name: "PAYMENTTOKEN"
-  script_start_slot: 29985360
+  c3_rate_nft_name: "OracleFeed"
+  c3_rate_nft_hash: "ca9a3d8457735b989628ef1193a62f40799680e2bfcaf8936211420c"
+  c3_oracle_rate_address: "addr_test1wqf99gagnjgfamek9v9vyrwulwh64xdnerq9xkvfhwyeu3qdufj2x"
 
 updates:
   - mnemonic: "your mnemonic here 1"

@@ -1,4 +1,5 @@
 """Deploy oracle on Cardano blockchain"""
+import asyncio
 import zipfile
 import os
 import subprocess
@@ -15,21 +16,32 @@ from pycardano import (
     AssetName,
     PlutusV2Script,
     BlockFrostChainContext,
+    VerificationKeyHash,
 )
-from src.chain_query import ChainQuery
-from src.owner_script import OwnerScript
-from src.oracle_start import OracleStart
-from src.datums import OracleSettings, PriceRewards
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.oracle_start import OracleStart
+from charli3_offchain_core.datums import OracleSettings, PriceRewards
+from charli3_offchain_core.utils.logging_config import logging
 
 
 def generate_validator_arguments(file_name, arguments):
     """Generate the validator arguments in YAML format"""
-    str_arguments = {
-        key: value.to_string() if hasattr(value, "to_string") else str(value)
-        for key, value in arguments.items()
-    }
+    str_arguments = {}
+    for key, value in arguments.items():
+        if isinstance(
+            value, (ScriptHash, VerificationKeyHash)
+        ):  # add other classes if necessary
+            str_arguments[key] = (
+                value.to_sting() if hasattr(value, "to_string") else str(value)
+            )
+        else:
+            str_arguments[key] = value
+
     with open(file_name, "w") as file:
-        yaml.dump(str_arguments, file)
+        yaml.safe_dump(
+            str_arguments, file, default_flow_style=False, allow_unicode=True
+        )
 
 
 def unzip_and_execute_binary(
@@ -40,6 +52,8 @@ def unzip_and_execute_binary(
     oracle_mp,
     payment_mp,
     payment_tn,
+    rate_tn=None,
+    rate_mp=None,
     args=None,
 ) -> PlutusV2Script:
     """Unzip the binary file and execute it and return the Plutus script"""
@@ -59,6 +73,8 @@ def unzip_and_execute_binary(
         "nodeFeed_tn": "NodeFeed",
         "payment_mp": payment_mp,
         "payment_tn": payment_tn,
+        "rate_tn": rate_tn,
+        "rate_mp": rate_mp,
     }
     generate_validator_arguments(
         os.path.join(os.getcwd(), "validator-argument.yml"), validator_arguments
@@ -105,6 +121,7 @@ def unzip_and_execute_binary(
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger("oracle_deploy")
     # Load configuration from YAML file
     with open("oracle_deploy.yml", "r") as ymlfile:
         config = yaml.safe_load(ymlfile)
@@ -115,11 +132,16 @@ if __name__ == "__main__":
         network = Network.TESTNET
     elif config["network"] == "MAINNET":
         network = Network.MAINNET
+    blockfrost_base_url = config["chain_query"]["base_url"]
+    blockfrost_project_id = config["chain_query"]["token_id"]
 
     blockfrost_context = BlockFrostChainContext(
-        config["chain_query"]["token_id"],
-        network,
-        base_url=config["chain_query"]["base_url"],
+        blockfrost_project_id,
+        base_url=blockfrost_base_url,
+    )
+
+    chain_query = ChainQuery(
+        blockfrost_context,
     )
 
     chain_query = ChainQuery(blockfrost_context=blockfrost_context)
@@ -143,8 +165,17 @@ if __name__ == "__main__":
     native_script = owner_minting_script.mk_owner_script(script_start_slot)
     c3_token_hash = ScriptHash.from_primitive(config["c3_token_hash"])
     c3_token_name = AssetName(config["c3_token_name"].encode())
-    # print(owner_addr)
-    # print(owner_minting_script.print_start_params(script_start_slot))
+
+    logger.info("Owner address: %s", owner_addr)
+    logger.info(
+        "Owner minting script params: %s",
+        owner_minting_script.print_start_params(script_start_slot),
+    )
+
+    c3_oracle_rate_token_name = config.get("exchange_rate_token_name") or None
+    c3_oracle_rate_token_hash = config.get("exchange_rate_token_hash")
+    if c3_oracle_rate_token_hash is not None:
+        c3_oracle_rate_token_hash = ScriptHash.from_primitive(c3_oracle_rate_token_hash)
 
     oracle_script = unzip_and_execute_binary(
         file_name="binary/serialized.zip",
@@ -154,6 +185,8 @@ if __name__ == "__main__":
         oracle_mp=native_script.hash(),
         payment_mp=c3_token_hash,
         payment_tn=config["c3_token_name"],
+        rate_tn=c3_oracle_rate_token_name,
+        rate_mp=c3_oracle_rate_token_hash,
         args=["-a", "-v"],
     )
 
@@ -173,7 +206,7 @@ if __name__ == "__main__":
             ],
             platform_fee=config["oracle_settings"]["os_node_fee_price"]["platform_fee"],
         ),
-        os_mad_multiplier=config["oracle_settings"]["os_mad_multiplier"],
+        os_iqr_multiplier=config["oracle_settings"]["os_iqr_multiplier"],
         os_divergence=config["oracle_settings"]["os_divergence"],
         os_platform_pkh=bytes.fromhex(config["oracle_settings"]["os_platform_pkh"]),
     )
@@ -189,4 +222,4 @@ if __name__ == "__main__":
         c3_token_hash=c3_token_hash,
         c3_token_name=c3_token_name,
     )
-    start.start_oracle(config["initial_c3_amount"])
+    asyncio.run(start.start_oracle(config["initial_c3_amount"]))
