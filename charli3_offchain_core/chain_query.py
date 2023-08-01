@@ -18,6 +18,8 @@ from pycardano import (
     ScriptHash,
     plutus_script_hash,
     PlutusV2Script,
+    UTxOSelectionException,
+    InsufficientUTxOBalanceException,
 )
 from charli3_offchain_core.datums import NodeDatum
 from charli3_offchain_core.utils.exceptions import CollateralException
@@ -219,6 +221,8 @@ class ChainQuery:
             await self.submit_tx_with_print(signed_tx)
         except CollateralException as err:
             logger.error("Error submitting transaction: %s", err)
+        except (InsufficientUTxOBalanceException, UTxOSelectionException) as exc:
+            print("Insufficient Funds in the wallet.", exc)
         except Exception as err:
             logger.error("Error submitting transaction: %s", err)
 
