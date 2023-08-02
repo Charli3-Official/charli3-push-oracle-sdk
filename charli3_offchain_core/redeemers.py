@@ -45,17 +45,25 @@ class AddNodes(PlutusData):
 
     CONSTR_ID = 5
 
+
 @dataclass
 class RemoveNodes(PlutusData):
     """Remove nodes Redeemer"""
 
     CONSTR_ID = 6
 
+
 @dataclass
 class OracleClose(PlutusData):
     """Oracle Close Redeemer"""
 
     CONSTR_ID = 7
+
+
+@dataclass
+class AddFunds(PlutusData):
+    "Top up contract redeemer"
+    CONSTR_ID = 8
 
 
 @dataclass

@@ -1,4 +1,7 @@
 MNEMONIC_24: "your mnemonic here"
+payment_sk:
+payment_vk:
+stake_vk:
 network: "testnet"
 chain_query:
   token_id: "YOUR_TOKEN_ID_HERE"

@@ -32,6 +32,10 @@ Note: This package is hosted privately on GitHub. To install it, you need to pro
 
 This guide walks you through the steps to deploy an oracle on the Cardano blockchain using Python.
 
+## Prepare binary file (if it is updated)
+
+Binary executable is packed into .zip archive and stored at `binary/serialized.zip`. If the oracle validator is changed, you need to update this file: either download it from release [assets](https://github.com/Charli3-Official/charli3-oracle-prototype/releases), or manually build & pack `cabal build serialized && zip -j serialized.zip $(cabal list-bin serialized)`.
+
 ## Create the configuration file
 Create a oracle_deploy.yml file in the root directory of the project. This file contains the configuration needed to deploy the oracle. Fill it with your specific values.
 
@@ -40,7 +44,7 @@ Here is an example of what it should look like: [sample-oracle-deploy.yml](sampl
 ## Run the oracle deployment script
 Finally, you can deploy the oracle by running the main script.
 ```bash
-python3 scripts/oracle_deploy.py 
+python3 scripts/oracle_deploy.py
 ```
 Remember to the `oracle_deploy.yml` file should be filled with your own values for the oracle. The mnemonic should be your 24-word mnemonic for your wallet, and other values should match your specific use-case and the state of the Cardano blockchain at the time of deployment.
 
@@ -78,19 +82,19 @@ Before running the CLI, you will need to set up your configuration in the [oracl
 Below are the available commands:
 
 1. `add-funds`: Interactively adds nodes to the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
-        
+
     ```bash
     python scripts/oracle_owner_actions.py add-funds
     ```
 2. `remove-nodes`: Interactively removes nodes from the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
-    
+
     Limitation : Make sure Wallet doesn't have C3 tokens or spceifically tx doesn't output C3 tokens while building, The validator checks for payment tokens (C3) Output and if it's more than the node rewards amount it will fail.
     ```
     python scripts/oracle_owner_actions.py remove-nodes
     ```
 3. `add-funds`: Adds funds to the oracle with Integer Arg.
-    
-    ``` 
+
+    ```
     python scripts/oracle_owner_actions.py add-funds 500
     ```
 4. `oracle-close`: Closes the oracle.
@@ -98,7 +102,7 @@ Below are the available commands:
     ```
     python scripts/oracle_owner_actions.py oracle-close
     ```
-    
+
 5. `platform-collect`: Collects the oracle's platform rewards.
 
     ```
@@ -123,7 +127,7 @@ Below are the available commands:
 ## Setup & Execution
 1. Before running the CLI, you will need to set up your configuration in the [run-node-simulator.yml](sample-run-node-simulator.yml) file.
 2. Update the updates list in the yaml with your own mnemonic phrases and update values.
-3. Run the script by typing 
+3. Run the script by typing
    ```
     python scripts/run_simulation.py
     ```
@@ -135,19 +139,19 @@ Explore the minting tokens module in the following files:
 - [charli3_offchain_core/mint.py](charli3_offchain_core/mint.py)
 - [charli3_offchain_core/run_minting.py](charli3_offchain_core/run_minting.py)
 ### Datums Implementation
-Check out the implementation of datums in Python in the following file: 
+Check out the implementation of datums in Python in the following file:
 - [charli3_offchain_core/datums.py](charli3_offchain_core/datums.py)
 ### Redeemers Implementation
 Check out the implementation of redeemers in Python in the following file:
 - [charli3_offchain_core/redeemers.py](charli3_offchain_core/redeemers.py)
 ### Node Operator Off-Chain Transactions
-Check out the implementation of Node off-chain transactions in Python in the following file: 
+Check out the implementation of Node off-chain transactions in Python in the following file:
 - [charli3_offchain_core/node.py](charli3_offchain_core/node.py)
 ### Oracle Owner (Admin) Off-Chain Transactions
 Check out the implementation of Oracle Owner off-chain transactions in Python in the following file:
 - [charli3_offchain_core/oracle_owner.py](charli3_offchain_core/oracle_owner.py)
 
-### ChainQuery 
+### ChainQuery
 [Chainquery](charli3_offchain_core/chain_query.py) contains code for interacting with the Cardano blockchain.
 
 
