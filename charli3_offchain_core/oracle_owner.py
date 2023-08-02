@@ -21,6 +21,7 @@ from pycardano import (
     ScriptHash,
     NativeScript,
     TransactionInput,
+    PaymentSigningKey,
 )
 from charli3_offchain_core.datums import (
     NodeDatum,
@@ -40,6 +41,7 @@ from charli3_offchain_core.redeemers import (
     PlatformCollect,
     AddNodes,
     RemoveNodes,
+    AddFunds,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_checks import (
@@ -60,7 +62,9 @@ class OracleOwner:
         self,
         network: Network,
         chainquery: ChainQuery,
-        signing_key: Union[ExtendedSigningKey, PaymentExtendedSigningKey],
+        signing_key: Union[
+            ExtendedSigningKey, PaymentExtendedSigningKey, PaymentSigningKey
+        ],
         verification_key: PaymentVerificationKey,
         node_nft: MultiAsset,
         aggstate_nft: MultiAsset,
@@ -77,7 +81,10 @@ class OracleOwner:
     ) -> None:
         check_type(network, Network, "network")
         check_type(chainquery, ChainQuery, "chainquery")
-        if not isinstance(signing_key, (PaymentExtendedSigningKey, ExtendedSigningKey)):
+        if not isinstance(
+            signing_key,
+            (PaymentExtendedSigningKey, ExtendedSigningKey, PaymentSigningKey),
+        ):
             check_type(signing_key, PaymentExtendedSigningKey, "signing_key")
         check_type(verification_key, PaymentVerificationKey, "verification_key")
         check_type(node_nft, MultiAsset, "node_nft")
@@ -176,7 +183,9 @@ class OracleOwner:
             for node_output in node_outputs:
                 builder.add_output(node_output)
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
 
     async def remove_nodes(self, pkhs: List[str]):
         """Remove nodes from the oracle script."""
@@ -247,12 +256,13 @@ class OracleOwner:
                     )
             self._burn_node_nfts(eligible_nodes, builder, remove_redeemer)
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
 
     async def edit_settings(self, settings: OracleSettings):
         """edit settings of oracle script."""
         aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
-        reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
 
         if (
             settings != aggstate_datum.aggstate.ag_settings
@@ -262,28 +272,15 @@ class OracleOwner:
             # prepare datums
             updated_aggstate_datum = self._update_aggstate(aggstate_datum, settings)
 
-            # handle platform reward address change
-            updated_reward_output = deepcopy(reward_utxo.output)
-            if (
-                settings.os_platform_pkh
-                != aggstate_datum.aggstate.ag_settings.os_platform_pkh
-            ):
-                updated_reward_datum = deepcopy(reward_datum)
-                updated_reward_datum.reward_state.platform_reward.reward_address = (
-                    settings.os_platform_pkh
-                )
-                updated_reward_output.datum = updated_reward_datum
-            else:
-                updated_reward_output.datum = deepcopy(reward_datum)
             # prepare builder
             builder = self._prepare_builder(
                 aggstate_utxo=aggstate_utxo,
                 updated_aggstate_datum=updated_aggstate_datum,
-                reward_utxo=reward_utxo,
-                updated_reward_utxo_output=updated_reward_output,
             )
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
         else:
             logger.error("Settings not changed or modified osNodeList")
 
@@ -296,19 +293,14 @@ class OracleOwner:
         """add funds (payment token) to aggstate UTxO of oracle script."""
 
         aggstate_utxo, _ = self._get_aggstate_utxo_and_datum()
-        reward_utxo, _ = self._get_reward_utxo_and_datum()
 
         if funds > 0:
             # prepare datums, redeemers and new node utxos for eligible nodes
-            add_funds_redeemer = Redeemer(UpdateSettings())
+            add_funds_redeemer = Redeemer(AddFunds())
 
             builder = TransactionBuilder(self.chainquery.context)
             builder.add_script_input(
                 aggstate_utxo,
-                script=self.script_utxo,
-                redeemer=deepcopy(add_funds_redeemer),
-            ).add_script_input(
-                reward_utxo,
                 script=self.script_utxo,
                 redeemer=deepcopy(add_funds_redeemer),
             )
@@ -330,22 +322,23 @@ class OracleOwner:
                 )
                 aggstate_tx_output.amount.multi_asset += c3_asset
             builder.add_output(aggstate_tx_output)
-            builder.add_output(reward_utxo.output)
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
         else:
             logger.error("Funds should be greater than 0.")
-
 
     async def platform_collect(self):
         """Collect oracle admin c3 rewards from oracle script."""
 
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
+        aggstate_utxo, _ = self._get_aggstate_utxo_and_datum()
 
         # check if platform reward is available
-        if reward_datum.reward_state.platform_reward.reward_amount > 0:
-            platform_reward = reward_datum.reward_state.platform_reward.reward_amount
-            reward_datum.reward_state.platform_reward.reward_amount = 0
+        if reward_datum.reward_state.platform_reward > 0:
+            platform_reward = reward_datum.reward_state.platform_reward
+            reward_datum.reward_state.platform_reward = 0
 
             # add platform reward to owner address
             c3_asset = MultiAsset(
@@ -369,7 +362,13 @@ class OracleOwner:
                     amount=Value(2000000, c3_asset),
                 )
             )
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+
+            # Reference AggState
+            builder.reference_inputs.add(aggstate_utxo)
+
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
         else:
             logger.error("No platform reward available to collect for owner.")
 
@@ -437,7 +436,9 @@ class OracleOwner:
                     redeemer=deepcopy(oracle_close_redeemer),
                 )
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
 
         else:
             logger.error("oracle close error.")
@@ -457,7 +458,9 @@ class OracleOwner:
 
             (builder.add_output(reference_script_utxo_output))
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
         else:
             logger.error("script hash mismatch")
 
@@ -484,7 +487,9 @@ class OracleOwner:
             )
             builder.add_output(oraclefeed_output)
 
-            await self.chainquery.submit_tx_builder(builder, self.signing_key, self.address)
+            await self.chainquery.submit_tx_builder(
+                builder, self.signing_key, self.address
+            )
 
     def _add_nodes_to_aggstate(
         self, aggstate_datum: AggDatum, nodes: List[bytes]

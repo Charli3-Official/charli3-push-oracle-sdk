@@ -98,7 +98,7 @@ class OracleStart:
 
         # Reference script output
         reference_script_utxo = TransactionOutput(
-            address=self.oracle_address, amount=62000000, script=self.oracle_script
+            address=self.oracle_address, amount=70000000, script=self.oracle_script
         )
 
         # Add reference script
@@ -172,9 +172,7 @@ class OracleStart:
         reward_datum = RewardDatum(
             reward_state=OracleReward(
                 node_reward_list=node_reward_list,
-                platform_reward=RewardInfo(
-                    bytes(self.oracle_settings.os_platform_pkh), 0
-                ),
+                platform_reward=0,
             )
         )
         reward_output = TransactionOutput(

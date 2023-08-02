@@ -15,13 +15,14 @@ from pycardano import (
     ScriptHash,
     AssetName,
     PlutusV2Script,
+    IndefiniteList,
     BlockFrostChainContext,
     VerificationKeyHash,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.owner_script import OwnerScript
 from charli3_offchain_core.oracle_start import OracleStart
-from charli3_offchain_core.datums import OracleSettings, PriceRewards
+from charli3_offchain_core.datums import OracleSettings, PriceRewards, OraclePlatform
 from charli3_offchain_core.utils.logging_config import logging
 
 
@@ -48,7 +49,6 @@ def unzip_and_execute_binary(
     file_name,
     unzip_dir,
     binary_name,
-    owner_ppkh,
     oracle_mp,
     payment_mp,
     payment_tn,
@@ -65,7 +65,6 @@ def unzip_and_execute_binary(
     # Generate the YAML file
     validator_arguments = {
         "file_name": "OracleV3",
-        "owner_ppkh": owner_ppkh,
         "oracle_mp": oracle_mp,
         "aggState_tn": "AggState",
         "reward_tn": "Reward",
@@ -178,7 +177,6 @@ if __name__ == "__main__":
         file_name="binary/serialized.zip",
         unzip_dir="binary",
         binary_name="serialized",
-        owner_ppkh=owner_addr.payment_part,
         oracle_mp=native_script.hash(),
         payment_mp=c3_token_hash,
         payment_tn=config["c3_token_name"],
@@ -205,7 +203,19 @@ if __name__ == "__main__":
         ),
         os_iqr_multiplier=config["oracle_settings"]["os_iqr_multiplier"],
         os_divergence=config["oracle_settings"]["os_divergence"],
-        os_platform_pkh=bytes.fromhex(config["oracle_settings"]["os_platform_pkh"]),
+        os_platform=OraclePlatform(
+            pmultisig_pkhs=IndefiniteList(
+                [
+                    bytes.fromhex(party)
+                    for party in config["oracle_settings"]["os_platform"][
+                        "pmultisig_pkhs"
+                    ]
+                ]
+            ),
+            pmultisig_threshold=config["oracle_settings"]["os_platform"][
+                "pmultisig_threshold"
+            ],
+        ),
     )
     start = OracleStart(
         network=network,
