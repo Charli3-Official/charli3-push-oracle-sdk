@@ -116,6 +116,9 @@ def unzip_and_execute_binary(
     # Remove the Plutus script file
     os.remove("OracleV3.plutus")
 
+    # Remove the empty folder
+    os.rmdir("binary")
+
     return plutus_script
 
 

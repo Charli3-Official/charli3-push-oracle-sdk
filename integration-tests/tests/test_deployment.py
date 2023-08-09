@@ -21,7 +21,7 @@ from charli3_offchain_core.mint import Mint
 from scripts.oracle_deploy import unzip_and_execute_binary
 
 
-# @pytest.mark.order(1)
+@pytest.mark.order(1)
 class TestDeployment(TestBase):
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     def setup_method(self, method):
