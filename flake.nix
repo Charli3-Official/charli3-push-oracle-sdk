@@ -36,7 +36,6 @@
           pkgs.mkShell {
             nativeBuildInputs = [
               pkgs.poetry
-              inputs'.cardano-transaction-lib.packages."plutip-server:exe:plutip-server"
               inputs'.ogmios.packages."ogmios:exe:ogmios"
               inputs'.cardano-node.packages.cardano-node
               inputs'.kupo-nixos.packages.kupo
