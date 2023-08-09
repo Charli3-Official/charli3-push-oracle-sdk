@@ -48,6 +48,7 @@ class OracleStart:
         settings: OracleSettings,
         c3_token_hash: ScriptHash,
         c3_token_name: AssetName,
+        native_script_with_signer: bool = True,
         stake_key: Optional[PaymentVerificationKey] = None,
     ) -> None:
         self.network = network
@@ -75,13 +76,17 @@ class OracleStart:
         self.node_pkh_list = self.oracle_settings.os_node_list
         self.c3_token_hash = c3_token_hash
         self.c3_token_name = c3_token_name
+        self.native_script_with_signer = native_script_with_signer
 
     async def start_oracle(self, initial_c3_amount: int):
         """Start oracle"""
         # Create a locking script that hold oracle script and also mints oracle NFT
-        oracle_owner = OwnerScript(
-            self.network, self.chain_query, self.verification_key
-        )
+        if self.native_script_with_signer:
+            oracle_owner = OwnerScript(
+                self.network, self.chain_query, self.verification_key
+            )
+        else:
+            oracle_owner = OwnerScript(self.network, self.chain_query, None)
         owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
         owner_script_hash = owner_script.hash()
         print(owner_script_hash)
@@ -180,9 +185,7 @@ class OracleStart:
         reward_datum = RewardDatum(
             reward_state=OracleReward(
                 node_reward_list=node_reward_list,
-                platform_reward=RewardInfo(
-                    bytes(self.oracle_settings.os_platform_pkh), 0
-                ),
+                platform_reward=0,
             )
         )
         reward_output = TransactionOutput(

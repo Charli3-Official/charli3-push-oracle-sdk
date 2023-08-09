@@ -1,5 +1,5 @@
 """Oracle Owner NFT minting script"""
-from typing import Tuple
+from typing import Tuple, Optional
 from pycardano import (
     Network,
     PaymentVerificationKey,
@@ -18,13 +18,17 @@ class OwnerScript:
         self,
         network: Network,
         chain_query: ChainQuery,
-        owner_verification_key: PaymentVerificationKey,
+        owner_verification_key: Optional[PaymentVerificationKey],
     ) -> None:
         self.network = network
         self.chain_query = chain_query
         self.context = self.chain_query.context
         self.owner_verification_key = owner_verification_key
-        self.owner_pub_key_hash = self.owner_verification_key.hash()
+        self.owner_pub_key_hash = (
+            self.owner_verification_key.hash()
+            if self.owner_verification_key is not None
+            else None
+        )
 
     def create_owner_script(self) -> Tuple[int, NativeScript]:
         """Create owner script and return script start slot and script"""
@@ -41,9 +45,6 @@ class OwnerScript:
 
     def mk_owner_script(self, script_start_slot: int) -> NativeScript:
         """Create owner script with script start slot as a parameter to make a unique script hash"""
-        # A policy that requires a signature from the public key
-        pub_key_policy = ScriptPubkey(self.owner_pub_key_hash)
-
         # A time policy that validates before a certain slot:
         # this is to parametrize script and make a unique script hash (e.g. to make a NFT),
         # and it is done to ensure that owner could spend/burn later.
@@ -51,8 +52,13 @@ class OwnerScript:
         # RequireTimeAfter means that minting/spending tx must be submitted after a slot
         valid_after_slot = InvalidBefore(script_start_slot)
 
-        # Combine two policies using ScriptAll policy
-        policy = ScriptAll([pub_key_policy, valid_after_slot])
+        # A policy that requires a signature from the public key
+        if self.owner_pub_key_hash is not None:
+            pub_key_policy = ScriptPubkey(self.owner_pub_key_hash)
+            # Combine two policies using ScriptAll policy
+            policy = ScriptAll([pub_key_policy, valid_after_slot])
+        else:
+            policy = valid_after_slot
 
         return policy
 

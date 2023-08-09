@@ -54,7 +54,7 @@ class Mint:
         c3_token = MultiAsset.from_primitive(
             {
                 policy_id.payload: {
-                    b"Charli3": 1000000000,  # Name of our token  # Quantity of this token
+                    b"Charli3": 10000,  # Name of our token  # Quantity of this token
                 }
             }
         )

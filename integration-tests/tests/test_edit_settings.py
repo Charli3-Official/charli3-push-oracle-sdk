@@ -4,51 +4,62 @@ import asyncio
 
 from retry import retry
 
-from pycardano import MultiAsset, TransactionOutput, Value, RawCBOR
+from pycardano import UTxO
 
-from src.oracle_owner import OracleOwner
-from src.owner_script import OwnerScript
-from src.datums import OracleSettings, AggDatum, PriceRewards
-
-from .base import TEST_RETRIES, TestBase
+from .base import TEST_RETRIES, OracleOwnerActions
+from charli3_offchain_core.datums import AggDatum, PriceRewards
+from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 
-class TestEditSettings(TestBase):
+@pytest.mark.order(3)
+class TestEditSettings(OracleOwnerActions):
     def setup_method(self, method):
-        self.oracle_owner = OracleOwner(
-            network=self.NETWORK,
-            chainquery=self.chain_context,
-            signing_key=self.owner_signing_key,
-            verification_key=self.owner_verification_key,
-            node_nft=self.oracle_nft,
-            aggstate_nft=self.aggstate_nft,
-            oracle_nft=self.oracle_nft,
-            reward_nft=self.reward_nft,
-            minting_nft_hash=self.owner_script_hash,
-            c3_token_hash=self.payment_script_hash,
-            c3_token_name=self.tC3_token_name,
-            oracle_addr=str(self.oracle_script_address),
-            stake_key=None,
-            minting_script=self.native_script,
-            validity_start=self.script_start_slot,
-        )
-
-    def get_aggstate_utxo_datum_cbor(self, address):
-        aggstate_utxo_raw_datum = self.get_aggstate_utxo_datum(address)
-        return AggDatum.from_cbor(aggstate_utxo_raw_datum.cbor)
+        super().setup_method(method)
 
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     @pytest.mark.asyncio
-    @pytest.mark.order(3)
-    async def test_editSettings(self):
-        aggstate_utxo_datum = self.get_aggstate_utxo_datum_cbor(self.oracle_script_address)
-        aggSettings = aggstate_utxo_datum.aggstate.agSettings
-        aggSettings.os_updated_nodes = self.updated_config["os_updated_nodes"]
+    async def test_edit_settings(self):
+        # Get aggState Datum
+        oracle_utxos = self.CHAIN_CONTEXT.context.utxos(self.oracle_addr)
+        aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)[0]
+        aggstate_utxo_datum = AggDatum.from_cbor(aggstate_utxo.output.datum.cbor)
 
-        await self.oracle_owner.edit_settings(aggSettings)
-        await asyncio.sleep(3)
+        # Update-settings transaction
+        aggstate_utxo_datum.os_updated_nodes = self.updated_config["os_updated_nodes"]
+        aggstate_utxo_datum.os_updated_node_time = self.updated_config[
+            "os_updated_node_time"
+        ]
+        aggstate_utxo_datum.os_aggregate_time = self.updated_config["os_aggregate_time"]
+        aggstate_utxo_datum.os_aggregate_change = self.updated_config[
+            "os_aggregate_change"
+        ]
+        aggstate_utxo_datum.os_node_fee_price = PriceRewards(
+            node_fee=self.updated_config["os_node_fee_price"]["node_fee"],
+            aggregate_fee=self.updated_config["os_node_fee_price"]["aggregate_fee"],
+            platform_fee=self.updated_config["os_node_fee_price"]["platform_fee"],
+        )
 
-        updated_aggstate_utxo_datum = self.get_aggstate_utxo_datum_cbor(self.oracle_script_address)
+        aggstate_utxo_datum.os_iqr_multiplier = self.updated_config["os_iqr_multiplier"]
+        aggstate_utxo_datum.os_divergence = self.updated_config["os_divergence"]
 
-        assert aggSettings == updated_aggstate_utxo_datum.aggstate.agSettings, \
-                f"Expected os_updated_nodes: {aggSettings}, but got: {updated_aggstate_utxo_datum.aggstate.agSettings}"
+        updated_oSettings = aggstate_utxo_datum.aggstate.ag_settings
+
+        await self.oracle_owner.edit_settings(updated_oSettings)
+
+        await asyncio.sleep(30)
+
+        # Get updated aggState Datum
+        updated_oracle_utxos = self.CHAIN_CONTEXT.context.utxos(self.oracle_addr)
+        updated_aggstate_utxo: UTxO = filter_utxos_by_asset(
+            updated_oracle_utxos, self.aggstate_nft
+        )[0]
+        updated_aggstate_utxo_datum = AggDatum.from_cbor(
+            updated_aggstate_utxo.output.datum.cbor
+        )
+
+        updated_aggSettings = updated_aggstate_utxo_datum.aggstate.ag_settings
+
+        # Assert
+        assert (
+            updated_oSettings == updated_aggSettings
+        ), f"Expected os_updated_nodes: {updated_oSettings}, but got: {updated_aggSettings}"

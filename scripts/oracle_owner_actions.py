@@ -12,6 +12,7 @@ from pycardano import (
     ScriptHash,
     AssetName,
     BlockFrostChainContext,
+    PaymentSigningKey,
 )
 
 from charli3_offchain_core.chain_query import ChainQuery
@@ -37,7 +38,32 @@ def setup(ctx, config_file):
     # Load the configuration file
     with open(config_file, "r") as f:
         oracle_owner_config = yaml.safe_load(f)
-    MNEMONIC_24 = oracle_owner_config["MNEMONIC_24"]
+
+    if oracle_owner_config["MNEMONIC_24"]:
+        MNEMONIC_24 = oracle_owner_config["MNEMONIC_24"]
+        hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
+        hdwallet_spend = hdwallet.derive_from_path("m/1852'/1815'/0'/0/0")
+        spend_public_key = hdwallet_spend.public_key
+        spend_vk = PaymentVerificationKey.from_primitive(spend_public_key)
+
+        hdwallet_stake = hdwallet.derive_from_path("m/1852'/1815'/0'/2/0")
+        stake_public_key = hdwallet_stake.public_key
+        stake_vk = PaymentVerificationKey.from_primitive(stake_public_key)
+
+        spend_sk = ExtendedSigningKey.from_hdwallet(hdwallet_spend)
+
+    elif oracle_owner_config["payment_vk"] and oracle_owner_config["payment_sk"]:
+        spend_sk = PaymentSigningKey.load(
+            "multi-signature/key/" + oracle_owner_config["payment_sk"]
+        )
+
+        spend_vk = PaymentVerificationKey.load(
+            "multi-signature/key/" + oracle_owner_config["payment_vk"]
+        )
+
+        stake_vk = PaymentVerificationKey.load(
+            "multi-signature/key/" + oracle_owner_config["stake_vk"]
+        )
 
     network = Network.MAINNET
     if oracle_owner_config["network"] == "testnet":
@@ -55,16 +81,6 @@ def setup(ctx, config_file):
         blockfrost_context,
     )
 
-    hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
-    hdwallet_spend = hdwallet.derive_from_path("m/1852'/1815'/0'/0/0")
-    spend_public_key = hdwallet_spend.public_key
-    spend_vk = PaymentVerificationKey.from_primitive(spend_public_key)
-
-    hdwallet_stake = hdwallet.derive_from_path("m/1852'/1815'/0'/2/0")
-    stake_public_key = hdwallet_stake.public_key
-    stake_vk = PaymentVerificationKey.from_primitive(stake_public_key)
-
-    extended_signing_key = ExtendedSigningKey.from_hdwallet(hdwallet_spend)
     owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network)
     oracle_addr = oracle_owner_config["oracle_owner"]["oracle_addr"]
     nft_hash = oracle_owner_config["oracle_owner"]["minting_nft_hash"]
@@ -91,7 +107,7 @@ def setup(ctx, config_file):
     oracle_owner = OracleOwner(
         network,
         chain_query,
-        extended_signing_key,
+        spend_sk,
         spend_vk,
         node_nft,
         aggstate_nft,
@@ -192,7 +208,7 @@ def edit_settings(ctx):
         "5": ("os_node_fee_price.node_fee", int),
         "6": ("os_node_fee_price.aggregate_fee", int),
         "7": ("os_node_fee_price.platform_fee", int),
-        "8": ("os_mad_multiplier", int),
+        "8": ("os_iqr_multiplier", int),
         "9": ("os_divergence", int),
     }
 
