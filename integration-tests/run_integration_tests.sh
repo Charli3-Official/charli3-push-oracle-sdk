@@ -30,7 +30,13 @@ mkdir -p ./wallets
 mkdir -p ./db
 
 # Start the local cluster and dump the output to JSON
-local-cluster -n 9 --dump-info-json ./local-cluster-info.json -d ./wallets/ --ada 200 --utxos 5  -s 1s -e 300 > /dev/null 2>&1 &
+local-cluster -n 9 \
+    --dump-info-json ./local-cluster-info.json \
+    -d ./wallets/ \
+    --ada 200 \
+    --utxos 5  \
+    -s 1s -e 3600 \
+    > /dev/null 2>&1 &
 
 # Save the PID of the local-cluster process
 local_cluster_pid=$!
@@ -44,7 +50,8 @@ sleep 5
 temp_dir=$(dirname $(jq -r '.ciNodeSocket' ./local-cluster-info.json))
 
 # Run the other commands with the extracted directory
-ogmios --node-socket $temp_dir/node.socket --node-config $temp_dir/node.config > /dev/null 2>&1 &
+ogmios --node-socket $temp_dir/node.socket \
+    --node-config $temp_dir/node.config > /dev/null 2>&1 &
 
 ogmios_pid=$!
 
@@ -53,7 +60,11 @@ echo "Running ogmios ..."
 # Give it some time to start up
 sleep 5
 
-kupo --node-socket $temp_dir/node.socket --node-config $temp_dir/node.config --workdir ./db --match "*" --since origin > /dev/null 2>&1 &
+kupo --node-socket $temp_dir/node.socket \
+    --node-config $temp_dir/node.config \
+    --workdir ./db --match "*" \
+    --since origin > /dev/null 2>&1 &
+
 kupo_pid=$!
 
 echo "Running kupo ..."
