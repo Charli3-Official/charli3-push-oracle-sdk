@@ -1,0 +1,35 @@
+name: Run Integration Tests
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v22
+
+    - name: Restore Nix cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/nix
+          key: ${{ runner.os }}-nix-${{ hashFiles('**/*.nix') }}
+          restore-keys: |
+            ${{ runner.os }}-nix-
+
+    - name: Set up Nix environment
+      run: nix develop
+
+    - name: Install dependencies
+      run: |
+        poetry install
+
+    - name: Run integration tests script
+      run: |
+         cd integration-tests
+         ./run_integration_tests.sh
