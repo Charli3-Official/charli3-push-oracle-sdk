@@ -17,12 +17,21 @@ kill_processes() {
 # Trap the SIGINT signal and call the function to kill processes
 trap 'kill_processes' SIGINT SIGTERM
 
-# Clean up the wallets and db directories
-rm -rf ./wallets/*
-rm -rf ./db/*
+# Remove content of directories if they exist
+if [ -d "./wallets" ]; then
+    rm -rf ./wallets/*
+fi
+if [ -d "./db" ]; then
+    rm -rf ./db/*
+fi
+
+# Create directories if they don't exist
+# mkdir -p ./wallets
+# mkdir -p ./db
 
 # Start the local cluster and dump the output to JSON
-local-cluster -n 9 --dump-info-json ./local-cluster-info.json -d ./wallets/ --ada 10000 --utxos 4 --lovelace 9000000 -s 1s -e 300 > /dev/null 2>&1 &
+local-cluster -n 9 --dump-info-json ./local-cluster-info.json -d ./wallets/ --ada 200 --utxos 5  -s 1s -e 300 & #> /dev/null 2>&1 &
+
 # Save the PID of the local-cluster process
 local_cluster_pid=$!
 
@@ -35,7 +44,7 @@ sleep 5
 temp_dir=$(dirname $(jq -r '.ciNodeSocket' ./local-cluster-info.json))
 
 # Run the other commands with the extracted directory
-ogmios --node-socket $temp_dir/node.socket --node-config $temp_dir/node.config > /dev/null 2>&1 &
+ogmios --node-socket $temp_dir/node.socket --node-config $temp_dir/node.config & #> /dev/null 2>&1 &
 
 ogmios_pid=$!
 
@@ -44,7 +53,7 @@ echo "Running ogmios ..."
 # Give it some time to start up
 sleep 5
 
-kupo --node-socket $temp_dir/node.socket --node-config $temp_dir/node.config --workdir ./db --match "*" --since origin > /dev/null 2>&1 &
+kupo --node-socket $temp_dir/node.socket --node-config $temp_dir/node.config --workdir ./db --match "*" --since origin &#> /dev/null 2>&1 &
 kupo_pid=$!
 
 echo "Running kupo ..."
@@ -52,12 +61,15 @@ echo "Running kupo ..."
 # Give it some time to start up
 sleep 5
 
-echo "Press Ctrl + C to stop"
 
-# Now you can run your tests
+# Tests
 # poetry run pytest tests
 
-# kill $local_cluster_pid
-# kill $ogmios_pid
-# kill $kupo_pid
+# Remove temporal file
+# rm -f ./local-cluster-info.json
+
+# After tests finish, exit the script
+# exit 0
+
+echo "Press Ctrl + C to stop"
 while true; do sleep 1; done

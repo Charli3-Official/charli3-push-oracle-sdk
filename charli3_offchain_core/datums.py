@@ -91,6 +91,16 @@ class PriceRewards(PlutusData):
 
 
 @dataclass
+class OraclePlatform(PlutusData):
+    """Oracle Platform parameters"""
+
+    pmultisig_pkhs: IndefiniteList
+    """ allowed pkhs for platform authorization :: [PubKeyHash] """
+    pmultisig_threshold: int
+    """ required number of signatories for authorization :: Integer """
+
+
+@dataclass
 class OracleSettings(PlutusData):
     """Oracle Settings parameters"""
 
@@ -103,7 +113,7 @@ class OracleSettings(PlutusData):
     os_node_fee_price: PriceRewards
     os_iqr_multiplier: int
     os_divergence: int
-    os_platform_pkh: bytes
+    os_platform: OraclePlatform
 
     def required_nodes_num(self, percent_resolution: int = 10000) -> int:
         """Number of nodes required"""
@@ -149,7 +159,7 @@ class OracleReward(PlutusData):
 
     CONSTR_ID = 0
     node_reward_list: List[RewardInfo]
-    platform_reward: RewardInfo
+    platform_reward: int
 
 
 @dataclass

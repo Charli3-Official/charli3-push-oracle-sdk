@@ -290,7 +290,7 @@ class Node:
                             aggregate_fee_added = True
 
                 # add platform fee to reward datum
-                reward_datum.reward_state.platform_reward.reward_amount += (
+                reward_datum.reward_state.platform_reward += (
                     fees.platform_fee
                     if not c3_oracle_rate_feed
                     else scale_reward(fees.platform_fee)
