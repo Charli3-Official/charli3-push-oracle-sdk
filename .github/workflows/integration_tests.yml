@@ -15,12 +15,12 @@ jobs:
     - uses: cachix/install-nix-action@v22
 
     - name: Restore Nix cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/nix
-          key: ${{ runner.os }}-nix-${{ hashFiles('**/*.nix') }}
-          restore-keys: |
-            ${{ runner.os }}-nix-
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/nix
+        key: ${{ runner.os }}-nix-${{ hashFiles('**/*.nix') }}
+        restore-keys: |
+          ${{ runner.os }}-nix-
 
     - name: Set up Nix environment
       run: nix develop
