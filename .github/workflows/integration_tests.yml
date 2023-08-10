@@ -27,7 +27,7 @@ jobs:
           ${{ runner.os }}-nix-
 
     - name: Set up Nix environment
-      run: nix build -f ./flake.nix
+      run: nix develop
 
     - name: Install dependencies
       run: |
