@@ -46,6 +46,12 @@
               PS1="\[\e[1;32m\][Nix]\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\]\$ "
             '';
           };
+          my-project-integration-tests = pkgs.stdenv.mkDerivation {
+            name = "my-project-integration-tests";
+            src = ./.;
+            builder = "${pkgs.bash}/bin/bash";
+            args = [ ./integration-tests.sh ];
+          };
       };
     };
 }
