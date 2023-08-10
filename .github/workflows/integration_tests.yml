@@ -13,6 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v22
+      with:
+        extra_nix_config:
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= iohk.cachix.org-1:DpRUyj7h7V830dp/i6Nti+NEO2/nhblbov/8MW7Rqoo=
+        substituters: https://hydra.iohk.io https://cache.nixos.org/
 
     - name: Restore Nix cache
       uses: actions/cache@v2
@@ -23,7 +27,7 @@ jobs:
           ${{ runner.os }}-nix-
 
     - name: Set up Nix environment
-      run: nix develop
+      run: nix build -f ./flake.nix
 
     - name: Install dependencies
       run: |
