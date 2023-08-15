@@ -210,6 +210,7 @@ class ChainQuery:
             address (Address): address
         """
         builder = await self.process_common_inputs(builder, address, signing_key)
+
         signed_tx = builder.build_and_sign(
             [signing_key],
             change_address=address,
@@ -364,7 +365,7 @@ class ChainQuery:
                 # A collateral should contain no multi asset
                 if not utxo.output.amount.multi_asset:
                     if utxo.output.amount < 10000000:
-                        if utxo.output.amount.coin >= 5000000:
+                        if utxo.output.amount.coin >= 8000000:
                             return utxo
         except ApiError as err:
             if err.status_code == 404:
@@ -372,7 +373,7 @@ class ChainQuery:
                 raise err
 
             logger.warning(
-                "Requirements for collateral couldn't be satisfied. need an utxo of >= 5000000\
+                "Requirements for collateral couldn't be satisfied. need an utxo of >= 8000000\
                 and < 10000000, %s",
                 err,
             )
@@ -398,8 +399,13 @@ class ChainQuery:
         collateral_builder = TransactionBuilder(self.context)
 
         collateral_builder.add_input_address(target_address)
-        collateral_builder.add_output(TransactionOutput(target_address, 5000000))
+        collateral_builder.add_output(TransactionOutput(target_address, 9000000))
 
         await self.submit_tx_with_print(
-            collateral_builder.build_and_sign([skey], target_address)
+            collateral_builder.build_and_sign(
+                [skey],
+                target_address,
+                auto_validity_start_offset=0,
+                auto_ttl_offset=120,
+            )
         )

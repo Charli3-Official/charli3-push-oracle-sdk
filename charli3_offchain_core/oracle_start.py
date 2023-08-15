@@ -1,9 +1,12 @@
 """Start oracle by submitting a reference script and minting its NFT"""
+from typing import Optional, Union
 from pycardano import (
     Network,
     Address,
     PaymentVerificationKey,
     PaymentExtendedSigningKey,
+    ExtendedSigningKey,
+    PaymentSigningKey,
     TransactionOutput,
     TransactionBuilder,
     Value,
@@ -38,23 +41,26 @@ class OracleStart:
         self,
         network: Network,
         chain_query: ChainQuery,
-        signing_key: PaymentExtendedSigningKey,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
         verification_key: PaymentVerificationKey,
-        stake_key: PaymentVerificationKey,
         oracle_script: PlutusV2Script,
         script_start_slot: int,
         settings: OracleSettings,
         c3_token_hash: ScriptHash,
         c3_token_name: AssetName,
+        native_script_with_signer: bool = True,
+        stake_key: Optional[PaymentVerificationKey] = None,
     ) -> None:
         self.network = network
         self.chain_query = chain_query
         self.context = self.chain_query.context
         self.signing_key = signing_key
         self.verification_key = verification_key
-        self.stake_key = stake_key
         self.pub_key_hash = self.verification_key.hash()
-        self.stake_key_hash = self.stake_key.hash()
+        self.stake_key = stake_key
+        self.stake_key_hash = (
+            self.stake_key.hash() if self.stake_key is not None else None
+        )
         self.address = Address(
             payment_part=self.pub_key_hash,
             staking_part=self.stake_key_hash,
@@ -70,15 +76,20 @@ class OracleStart:
         self.node_pkh_list = self.oracle_settings.os_node_list
         self.c3_token_hash = c3_token_hash
         self.c3_token_name = c3_token_name
+        self.native_script_with_signer = native_script_with_signer
 
     async def start_oracle(self, initial_c3_amount: int):
         """Start oracle"""
         # Create a locking script that hold oracle script and also mints oracle NFT
-        oracle_owner = OwnerScript(
-            self.network, self.chain_query, self.verification_key
-        )
+        if self.native_script_with_signer:
+            oracle_owner = OwnerScript(
+                self.network, self.chain_query, self.verification_key
+            )
+        else:
+            oracle_owner = OwnerScript(self.network, self.chain_query, None)
         owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
         owner_script_hash = owner_script.hash()
+        print(owner_script_hash)
         c3_asset = MultiAsset(
             {self.c3_token_hash: Asset({self.c3_token_name: initial_c3_amount})}
         )
@@ -96,9 +107,11 @@ class OracleStart:
         print(f"Locking script address: {owner_script_addr}")
         print(f"Oracle script address: {self.oracle_address}")
 
+        print(self.context.utxos(self.address))
+
         # Reference script output
         reference_script_utxo = TransactionOutput(
-            address=self.oracle_address, amount=70000000, script=self.oracle_script
+            address=self.oracle_address, amount=62000000, script=self.oracle_script
         )
 
         # Add reference script

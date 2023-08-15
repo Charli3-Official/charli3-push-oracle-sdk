@@ -62,7 +62,8 @@ class OracleClose(PlutusData):
 
 @dataclass
 class AddFunds(PlutusData):
-    "Top up contract redeemer"
+    """Top up contract redeemer"""
+
     CONSTR_ID = 8
 
 

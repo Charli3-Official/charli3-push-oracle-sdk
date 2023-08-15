@@ -1,4 +1,4 @@
-"""Deploy oracle on Cardano blockchain"""
+"""Deployment of the oracle contract  on Cardano blockchain"""
 import asyncio
 import zipfile
 import os
@@ -116,6 +116,9 @@ def unzip_and_execute_binary(
     # Remove the Plutus script file
     os.remove("OracleV3.plutus")
 
+    # Remove the empty folder
+    os.rmdir("binary")
+
     return plutus_script
 
 
@@ -142,6 +145,9 @@ if __name__ == "__main__":
     chain_query = ChainQuery(
         blockfrost_context,
     )
+
+    chain_query = ChainQuery(blockfrost_context=blockfrost_context)
+
     hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
     hdwallet_spend = hdwallet.derive_from_path("m/1852'/1815'/0'/0/0")
     spend_public_key = hdwallet_spend.public_key

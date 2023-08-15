@@ -16,7 +16,6 @@ from pycardano import (
     AuxiliaryData,
     AlonzoMetadata,
     Metadata,
-    ExecutionUnits,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 
@@ -24,11 +23,13 @@ from charli3_offchain_core.chain_query import ChainQuery
 @dataclass
 class MintToken(PlutusData):
     """MintToken class"""
+
     CONSTR_ID = 0
 
 
 class Mint:
     """Mint class"""
+
     def __init__(
         self,
         network: Network,
@@ -48,13 +49,12 @@ class Mint:
 
     async def mint_nft_with_script(self):
         """mint tokens with plutus v2 script"""
-        print(type(self.minting_script_plutus_v2))
         policy_id = plutus_script_hash(self.minting_script_plutus_v2)
 
         c3_token = MultiAsset.from_primitive(
             {
                 policy_id.payload: {
-                    b"Charli3": 1000000000,  # Name of our token  # Quantity of this token
+                    b"Charli3": 10000,  # Name of our token  # Quantity of this token
                 }
             }
         )
@@ -69,7 +69,7 @@ class Mint:
                 }
             }
         }
-        print(policy_id.payload.hex())
+        # print("tC3 Token policy ID: ", policy_id.payload.hex())
         # Place metadata in AuxiliaryData, the format acceptable by a transaction.
         auxiliary_data = AuxiliaryData(AlonzoMetadata(metadata=Metadata(metadata)))
 
@@ -82,7 +82,7 @@ class Mint:
         # Add minting script with an empty datum and a minting redeemer
         builder.add_minting_script(
             self.minting_script_plutus_v2,
-            redeemer=Redeemer(MintToken(), ExecutionUnits(1000000, 300979640)),
+            redeemer=Redeemer(MintToken()),
         )
 
         # Set nft we want to mint
@@ -95,4 +95,6 @@ class Mint:
         nft_output = TransactionOutput(self.address, Value(2000000, c3_token))
         builder.add_output(nft_output)
 
-        await self.chain_query.submit_tx_builder(builder, self.signing_key, self.address)
+        await self.chain_query.submit_tx_builder(
+            builder, self.signing_key, self.address
+        )

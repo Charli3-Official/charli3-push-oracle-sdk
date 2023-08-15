@@ -133,6 +133,16 @@ Below are the available commands:
     ```
 4. The script will print the public key hash of each node it creates, perform the updates for each node, aggregate the oracle with last node, and collect reward for each node with a 20-second delay between each collection.
 
+# Run Integration Tests
+
+## Setup & Execution
+The integration tests are executed using [plutip](https://github.com/mlabs-haskell/plutip/tree/master), the [local cluster](https://github.com/mlabs-haskell/plutip/blob/master/local-cluster/README.md) of nodes.
+1. Navigate to the folder `integration-test`
+2. Execute `nix develop`
+3. Inside the Nix environment run the script `run_integration_tests.sh`
+The script generates a local node, which will be utilized by both the Ogmios and Kupo services.
+Note: Whenever modifications are applied to the contract address, ensure to promptly update the corresponding contract address in the designated `integration-test/configuration.yml` file.
+
 ## Modules
 ### Minting Tokens
 Explore the minting tokens module in the following files:
