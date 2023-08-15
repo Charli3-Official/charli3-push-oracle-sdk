@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 from pycardano import (
     Network,
+    PaymentSigningKey,
     Address,
     PaymentVerificationKey,
     Value,

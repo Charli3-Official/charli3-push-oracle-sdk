@@ -1,0 +1,37 @@
+oracle_owner:
+  script_start_slot: 1
+  tC3_initial_amount: 3000
+  tC3_add_funds: 3000
+
+oracle_info:
+  oracle_script_address:  addr1w9qhwc2ed930gvwjkquvy0hspdt3mgyvl5uyu3dscrngq4cppterh
+
+oracle_settings:
+  os_updated_nodes: 6000
+  os_updated_node_time: 1800000
+  os_aggregate_time: 1800000
+  os_aggregate_change: 200
+  os_node_fee_price:
+    node_fee: 10
+    aggregate_fee: 20
+    platform_fee: 10
+  os_iqr_multiplier: 2
+  os_divergence: 1500
+  os_platform:
+    pmultisig_threshold: 1
+
+updated_oracle_settings:
+  os_updated_nodes: 7000
+  os_updated_node_time: 2400000
+  os_aggregate_time: 2400000
+  os_aggregate_change: 500
+  os_node_fee_price:
+    node_fee: 12
+    aggregate_fee: 15
+    platform_fee: 9
+  os_iqr_multiplier: 4
+  os_divergence: 2500
+  os_platform:
+    pmultisig_threshold: 1
+
+nodes_values: [411500511, 411500511, 411500511, 411500511, 411500511]
