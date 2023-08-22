@@ -1,5 +1,8 @@
-#!/bin/bash
-#
+#!/usr/bin/env bash
+
+set -e
+set -x
+
 # Function to kill processes
 kill_processes() {
     echo "Shutting down the cluster..."
