@@ -2,8 +2,6 @@ name: Run Integration Tests
 
 on:
   push:
-    branches:
-      - '*'
   pull_request:
 
 jobs:
@@ -11,26 +9,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: DeterminateSystems/nix-installer-action@main
-    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-    - name: Restore Nix cache
-      uses: actions/cache@v2
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
+
+    - name: Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@749fc5bbc9fa49d60c2b93f6c4bc867b82e1d295
+
+    - name: Use Cachix
+      uses: cachix/cachix-action@1174ea01d449b43245be6e9581deba37afdef485
       with:
-        path: ~/.cache/nix
-        key: ${{ runner.os }}-nix-${{ hashFiles('**/*.nix') }}
-        restore-keys: |
-          ${{ runner.os }}-nix-
+        name: charli3
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-    - name: Set up Nix environment
-      run: nix develop
-
-    - name: Install dependencies
-      run: |
-        poetry install
+    - name: Install python dependencies
+      run: nix develop -c poetry install
 
     - name: Run integration tests script
-      run: |
-         cd integration-tests
-         ./run_integration_tests.sh
+      run: nix develop -c ./run_integration_tests.sh
+         
