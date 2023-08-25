@@ -1,0 +1,29 @@
+name: Run Integration Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
+
+    - name: Use Cachix
+      uses: cachix/cachix-action@1174ea01d449b43245be6e9581deba37afdef485
+      with:
+        name: charli3
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - name: Install python dependencies
+      run: nix develop -c poetry install
+
+    - name: Run integration tests script
+      run: nix develop -c env -C integration-tests ./run_integration_tests.sh
+         
