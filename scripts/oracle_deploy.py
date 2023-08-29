@@ -106,7 +106,6 @@ def unzip_and_execute_binary(
     # Load the Plutus script file
     with open("OracleV3.plutus", "r") as f:
         plutus_data = json.load(f)
-
     # Get the "cborHex" from the Plutus script file
     script_hex = plutus_data.get("cborHex")
 
@@ -115,9 +114,6 @@ def unzip_and_execute_binary(
 
     # Remove the Plutus script file
     os.remove("OracleV3.plutus")
-
-    # Remove the empty folder
-    os.rmdir("binary")
 
     return plutus_script
 

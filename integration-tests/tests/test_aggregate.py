@@ -1,13 +1,13 @@
 import pytest
 
 import asyncio
-
+import time
 from retry import retry
-
+from typing import List
 from pycardano import UTxO
 
 from .base import TEST_RETRIES, OracleOwnerActions
-from charli3_offchain_core.datums import OracleDatum
+from charli3_offchain_core.datums import OracleDatum, NodeDatum
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 from charli3_offchain_core.node import Node
 
@@ -19,7 +19,7 @@ class TestAggregate(OracleOwnerActions):
 
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     @pytest.mark.asyncio
-    async def test_aggregate(self):
+    async def test_node_updates(self):
         nodes = []
         # Aggregation with 3 nodes because of memmory limitations
         for i in range(1, 4):
@@ -49,8 +49,38 @@ class TestAggregate(OracleOwnerActions):
         # After all updates are done, sleep for a while
         await asyncio.sleep(30)
 
+        updated_oracle_utxos = self.CHAIN_CONTEXT.context.utxos(self.oracle_addr)
+        node_utxos: List[UTxO] = filter_utxos_by_asset(
+            updated_oracle_utxos, self.single_node_nft
+        )
+        print("NODES", node_utxos)
+        for node_utxo in node_utxos:
+            node_datum = NodeDatum.from_cbor(node_utxo.output.datum.cbor)
+            node_feed = node_datum.node_state.ns_feed.df.df_value
+
+            assert (
+                41150 == node_feed
+            ), f"Expected node feed value: 41150, but got: {node_feed}"
+
+    @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
+    @pytest.mark.asyncio
+    async def test_aggregate(self):
+        skey, vkey = self.wallet_keys[1]
+        node = Node(
+            self.NETWORK,
+            self.CHAIN_CONTEXT,
+            skey,
+            vkey,
+            self.single_node_nft,
+            self.aggstate_nft,
+            self.oracle_feed_nft,
+            self.reward_nft,
+            self.oracle_addr,
+            self.payment_script_hash,
+            self.tC3_token_name,
+        )
         print("Aggregating...")
-        await nodes[-1].aggregate()
+        await node.aggregate()
 
         await asyncio.sleep(30)
 
@@ -62,7 +92,7 @@ class TestAggregate(OracleOwnerActions):
             updated_oracle_feed_utxo.output.datum.cbor
         )
         exchange_rate = updated_oracle_feed_utxo_datum.price_data.get_price()
-        expected_exchange_rate = 411500511
+        expected_exchange_rate = 41150
         assert (
             exchange_rate == expected_exchange_rate
         ), f"Expected exchange_rate: {expected_exchange_rate}, but got: {exchange_rate}"

@@ -50,13 +50,6 @@ class TestDeployment(TestBase):
             args=["-a", "-v"],
         )
 
-        # oracle_script_path = os.path.join(self.DIR_PATH, "OracleV3.plutus")
-        # with open(oracle_script_path, "r") as f:
-        #     script_hex = f.read()
-        #     oracle_plutus_script_v2 = PlutusV2Script(
-        #         cbor2.loads(bytes.fromhex(script_hex))
-        #     )
-
         # Contract hash
         script_hash = plutus_script_hash(oracle_plutus_script_v2)
 
@@ -104,7 +97,7 @@ class TestDeployment(TestBase):
 
     def test_number_of_existing_node_utxos(self):
         total_nodes = self.get_total_nodes(self.oracle_addr)
-        assert total_nodes == 5, f"Expected 5 Nodes, received {total_nodes}"
+        assert total_nodes == 3, f"Expected 3 Nodes, received {total_nodes}"
 
     def test_aggstate_nft_existence(self):
         oracle_utxos = self.CHAIN_CONTEXT.context.utxos(self.oracle_addr)
