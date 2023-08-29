@@ -1,10 +1,10 @@
 oracle_owner:
   script_start_slot: 1
   tC3_initial_amount: 3000
-  tC3_add_funds: 3000
+  tC3_add_funds: 1000000000
 
 oracle_info:
-  oracle_script_address:  addr1w9qhwc2ed930gvwjkquvy0hspdt3mgyvl5uyu3dscrngq4cppterh
+  oracle_script_address: addr1wxzrptcvnna5u864u2x8yk4qtxae7wx8pea99awgcngtmzg3n7e4j
 
 oracle_settings:
   os_updated_nodes: 6000
@@ -34,4 +34,4 @@ updated_oracle_settings:
   os_platform:
     pmultisig_threshold: 1
 
-nodes_values: [411500511, 411500511, 411500511, 411500511, 411500511]
+nodes_values: [41150, 41150, 41150]

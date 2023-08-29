@@ -21,9 +21,11 @@ jobs:
         name: charli3
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+    - name: Install libsecp256k1 library
+      run: sudo apt-get install -y libsecp256k1-0
+
     - name: Install python dependencies
       run: nix develop -c poetry install
 
     - name: Run integration tests script
       run: nix develop -c env -C integration-tests ./run_integration_tests.sh
-         
