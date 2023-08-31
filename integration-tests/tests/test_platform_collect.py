@@ -27,7 +27,14 @@ class TestPlatformCollect(OracleOwnerActions):
         # Get the platform quantity
         reward_quantity = reward_utxo_datum.reward_state.platform_reward
 
-        await self.oracle_owner.platform_collect()
+        platform_pkhs = [self.oracle_owner.pub_key_hash.payload.hex()]
+        tx = await self.oracle_owner.mk_platform_collect_tx(
+            platform_pkhs, self.oracle_owner.address
+        )
+        await asyncio.sleep(5)
+        await self.oracle_owner.staged_query.sign_and_submit_tx(
+            tx, self.oracle_owner.signing_key
+        )
 
         await asyncio.sleep(30)
 

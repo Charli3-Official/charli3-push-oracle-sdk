@@ -22,7 +22,7 @@ from pycardano import (
     ScriptHash,
     NativeScript,
     TransactionInput,
-    PaymentSigningKey,
+    Transaction,
 )
 from charli3_offchain_core.datums import (
     NodeDatum,
@@ -44,7 +44,7 @@ from charli3_offchain_core.redeemers import (
     RemoveNodes,
     AddFunds,
 )
-from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.oracle_checks import (
     filter_utxos_by_asset,
     check_node_exists,
@@ -108,6 +108,9 @@ class OracleOwner:
             check_type(validity_start, int, "validity_start")
         self.network = network
         self.chainquery = chainquery
+        self.staged_query = StagedTxSubmitter(
+            chainquery.blockfrost_context, chainquery.ogmios_context
+        )
         self.signing_key = signing_key
         self.verification_key = verification_key
         self.pub_key_hash = self.verification_key.hash()
@@ -148,7 +151,9 @@ class OracleOwner:
             self.minting_script = None
             self.validity_start = None
 
-    async def add_nodes(self, pkhs: List[str]):
+    async def mk_add_nodes_tx(
+        self, platform_multisig_pkhs: List[str], pkhs: List[str]
+    ) -> Transaction:
         """Add nodes to oracle script."""
         pkhs = list(map(lambda x: bytes(VerificationKeyHash.from_primitive(x)), pkhs))
         eligible_nodes = self._get_eligible_nodes(pkhs, operation="add")
@@ -184,11 +189,20 @@ class OracleOwner:
             for node_output in node_outputs:
                 builder.add_output(node_output)
 
-            await self.chainquery.submit_tx_builder(
+            platform_multisig_vkhs = list(
+                map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
+            )
+            builder.required_signers = platform_multisig_vkhs
+
+            tx = await self.staged_query.build_tx(
                 builder, self.signing_key, self.address
             )
 
-    async def remove_nodes(self, pkhs: List[str]):
+            return tx
+
+    async def mk_remove_nodes_tx(
+        self, platform_multisig_pkhs: List[str], pkhs: List[str]
+    ) -> Transaction:
         """Remove nodes from the oracle script."""
         pkhs = [bytes.fromhex(pkh) for pkh in pkhs]
         eligible_nodes = self._get_eligible_nodes(pkhs, operation="remove")
@@ -257,11 +271,20 @@ class OracleOwner:
                     )
             self._burn_node_nfts(eligible_nodes, builder, remove_redeemer)
 
-            await self.chainquery.submit_tx_builder(
+            platform_multisig_vkhs = list(
+                map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
+            )
+            builder.required_signers = platform_multisig_vkhs
+
+            tx = await self.staged_query.build_tx(
                 builder, self.signing_key, self.address
             )
 
-    async def edit_settings(self, settings: OracleSettings):
+            return tx
+
+    async def mk_edit_settings_tx(
+        self, platform_multisig_pkhs: List[str], settings: OracleSettings
+    ) -> Transaction:
         """edit settings of oracle script."""
         aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
 
@@ -279,9 +302,16 @@ class OracleOwner:
                 updated_aggstate_datum=updated_aggstate_datum,
             )
 
-            await self.chainquery.submit_tx_builder(
+            platform_multisig_vkhs = list(
+                map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
+            )
+            builder.required_signers = platform_multisig_vkhs
+
+            tx = await self.staged_query.build_tx(
                 builder, self.signing_key, self.address
             )
+
+            return tx
         else:
             logger.error("Settings not changed or modified osNodeList")
 
@@ -330,7 +360,9 @@ class OracleOwner:
         else:
             logger.error("Funds should be greater than 0.")
 
-    async def platform_collect(self):
+    async def mk_platform_collect_tx(
+        self, platform_multisig_pkhs: List[str], withdrawal_addr: Address
+    ) -> Transaction:
         """Collect oracle admin c3 rewards from oracle script."""
 
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
@@ -359,7 +391,7 @@ class OracleOwner:
                 redeemer=deepcopy(platform_collect_redeemer),
             ).add_output(tx_output).add_output(
                 TransactionOutput(
-                    address=self.address,
+                    address=withdrawal_addr,
                     amount=Value(2000000, c3_asset),
                 )
             )
@@ -367,13 +399,22 @@ class OracleOwner:
             # Reference AggState
             builder.reference_inputs.add(aggstate_utxo)
 
-            await self.chainquery.submit_tx_builder(
+            platform_multisig_vkhs = list(
+                map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
+            )
+            builder.required_signers = platform_multisig_vkhs
+
+            tx = await self.staged_query.build_tx(
                 builder, self.signing_key, self.address
             )
+
+            return tx
         else:
             logger.error("No platform reward available to collect for owner.")
 
-    async def oracle_close(self):
+    async def mk_oracle_close_tx(
+        self, platform_multisig_pkhs: List[str]
+    ) -> Transaction:
         """remove all oralce utxos from oracle script."""
 
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
@@ -437,10 +478,16 @@ class OracleOwner:
                     redeemer=deepcopy(oracle_close_redeemer),
                 )
 
-            await self.chainquery.submit_tx_builder(
+            platform_multisig_vkhs = list(
+                map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
+            )
+            builder.required_signers = platform_multisig_vkhs
+
+            tx = await self.staged_query.build_tx(
                 builder, self.signing_key, self.address
             )
 
+            return tx
         else:
             logger.error("oracle close error.")
 

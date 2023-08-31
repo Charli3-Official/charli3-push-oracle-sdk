@@ -12,6 +12,7 @@ from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 from charli3_offchain_core.node import Node
 
 
+### TODO fix non deterministic test
 @pytest.mark.order(6)
 class TestAggregate(OracleOwnerActions):
     def setup_method(self, method):
@@ -79,6 +80,7 @@ class TestAggregate(OracleOwnerActions):
             self.payment_script_hash,
             self.tC3_token_name,
         )
+        await asyncio.sleep(5)
         print("Aggregating...")
         await node.aggregate()
 

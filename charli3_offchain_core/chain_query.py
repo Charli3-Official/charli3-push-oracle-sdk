@@ -20,6 +20,7 @@ from pycardano import (
     PlutusV2Script,
     UTxOSelectionException,
     InsufficientUTxOBalanceException,
+    VerificationKeyWitness,
 )
 from charli3_offchain_core.datums import NodeDatum
 from charli3_offchain_core.utils.exceptions import CollateralException
@@ -157,13 +158,17 @@ class ChainQuery:
 
         Args:
             builder (TransactionBuilder): transaction builder
-            address (Address): address
+            address (Address): address belonging to signing_key, used for balancing, collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
 
         Returns:
             TransactionBuilder: transaction builder
         """
+        # Add input address for tx balancing,
+        # this could include any address utxos and spend them for tx fees
         builder.add_input_address(address)
+
+        # Fresh output for convenience of using for collateral in future
         builder.add_output(TransactionOutput(address, 5000000))
 
         non_nft_utxo = await self.get_or_create_collateral(address, signing_key)
@@ -183,7 +188,7 @@ class ChainQuery:
     ) -> UTxO:
         """get or create collateral
         Args:
-            address (Address): address
+            address (Address): address belonging to signing_key, used for balancing, collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
         Returns:
             UTxO: utxo
@@ -207,7 +212,7 @@ class ChainQuery:
         Args:
             builder (TransactionBuilder): transaction builder
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
-            address (Address): address
+            address (Address): address belonging to signing_key, used for balancing, collateral and change
         """
         builder = await self.process_common_inputs(builder, address, signing_key)
 
@@ -409,3 +414,103 @@ class ChainQuery:
                 auto_ttl_offset=120,
             )
         )
+
+
+class StagedTxSubmitter(ChainQuery):
+    """Handles tx submission in separate stages: build, sign n times, submit"""
+
+    async def process_common_inputs(
+        self,
+        builder: TransactionBuilder,
+        address: Address,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+    ) -> TransactionBuilder:
+        """process common inputs for transaction builder
+
+        Args:
+            builder (TransactionBuilder): transaction builder
+            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
+
+        Returns:
+            TransactionBuilder: transaction builder
+        """
+        # Add input address for tx balancing,
+        # this could include any address utxos and spend them for tx fees
+        builder.add_input_address(address)
+
+        # Fresh output for convenience of using for collateral in future
+        builder.add_output(TransactionOutput(address, 5000000))
+
+        non_nft_utxo = await self.get_or_create_collateral(address, signing_key)
+
+        if non_nft_utxo is not None:
+            builder.collaterals.append(non_nft_utxo)
+
+            return builder
+
+        raise CollateralException("Unable to find or create collateral.")
+
+    async def build_tx(
+        self,
+        builder: TransactionBuilder,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+        address: Address,
+    ) -> Transaction:
+        """adds collateral and builds tx.
+
+        Args:
+            builder (TransactionBuilder): transaction builder
+            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
+            address (Address): address belonging to signing_key, used for balancing, collateral and change
+        """
+        builder = await self.process_common_inputs(builder, address, signing_key)
+
+        tx_body = builder.build(
+            change_address=address,
+            collateral_change_address=address,
+            auto_validity_start_offset=0,
+            auto_ttl_offset=1000,
+        )
+        witness_set = builder.build_witness_set()
+        witness_set.vkey_witnesses = []
+
+        return Transaction(tx_body, witness_set, auxiliary_data=builder.auxiliary_data)
+
+    def sign_tx(
+        self,
+        tx: Transaction,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+    ) -> None:
+        """add signature to tx witness.
+
+        Args:
+            tx (Transaction): transaction object
+            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
+        """
+        signature = signing_key.sign(tx.transaction_body.hash())
+        tx.transaction_witness_set.vkey_witnesses.append(
+            VerificationKeyWitness(signing_key.to_verification_key(), signature)
+        )
+
+    async def sign_and_submit_tx(
+        self,
+        tx: Transaction,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+    ) -> None:
+        """sign and submit tx.
+
+        Args:
+            builder (TransactionBuilder): transaction builder
+            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
+        """
+        self.sign_tx(tx, signing_key)
+
+        try:
+            await self.submit_tx_with_print(tx)
+        except CollateralException as err:
+            logger.error("Error submitting transaction: %s", err)
+        except (InsufficientUTxOBalanceException, UTxOSelectionException) as exc:
+            print("Insufficient Funds in the wallet.", exc)
+        except Exception as err:
+            logger.error("Error submitting transaction: %s", err)

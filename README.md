@@ -34,7 +34,7 @@ This guide walks you through the steps to deploy an oracle on the Cardano blockc
 
 ## Prepare binary file (if it is updated)
 
-Binary executable is packed into .zip archive and stored at `binary/serialized.zip`. If the oracle validator is changed, you need to update this file: either download it from release [assets](https://github.com/Charli3-Official/charli3-oracle-prototype/releases), or manually build & pack `cabal build serialized && zip -j serialized.zip $(cabal list-bin serialized)`.
+Binary executable is packed into .zip archive and stored at `binary/serialized.zip`. If the oracle validator is changed, you need to update this file: either download it from release [assets](https://github.com/Charli3-Official/charli3-oracle-prototype/releases), or manually build & pack `cabal build serialized --enable-executable-static && zip -j serialized.zip $(cabal list-bin serialized)`.
 
 ## Create the configuration file
 Create a oracle_deploy.yml file in the root directory of the project. This file contains the configuration needed to deploy the oracle. Fill it with your specific values.
@@ -65,12 +65,14 @@ Options:
 
 Commands:
   add-funds                Add funds to the oracle.
-  add-nodes                Add nodes to the oracle interactively.
   create-reference-script  Create the reference script.
-  edit-settings            Interactively edit the oracle settings.
-  oracle-close             Close the oracle.
-  platform-collect         Collect the oracle's platform rewards.
-  remove-nodes             Remove nodes from the oracle interactively.
+  mk-add-nodes             Make add nodes tx interactively.
+  mk-edit-settings         Interactively create edit oracle settings tx.
+  mk-oracle-close          Make tx for closing the oracle.
+  mk-platform-collect      Make tx that collects the oracles rewards.
+  mk-remove-nodes          Make remove nodes tx interactively.
+  sign-and-submit-tx       Parse, sign and submit tx interactively.
+  sign-tx                  Parse tx and sign interactively.
 ```
 ## How to Use
 The CLI is built with Python and uses Click library to manage the commands.
@@ -81,10 +83,10 @@ Before running the CLI, you will need to set up your configuration in the [oracl
 
 Below are the available commands:
 
-1. `add-funds`: Interactively adds nodes to the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
+1. `add-nodes`: Interactively adds nodes to the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
 
     ```bash
-    python scripts/oracle_owner_actions.py add-funds
+    python scripts/oracle_owner_actions.py add-nodes
     ```
 2. `remove-nodes`: Interactively removes nodes from the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
 
@@ -121,6 +123,9 @@ Below are the available commands:
     python scripts/oracle_owner_actions.py edit-settings
     ```
 
+8. `sign-tx`: Parse tx and sign interactively. This action is performed by all platform parties after someone made tx with mk-* command.
+
+9. `sign-and-submit-tx`: Parse, sign and submit tx interactively. This actions is performed by last platform party that signs the tx.
 
 # Run Nodes Simulator
 

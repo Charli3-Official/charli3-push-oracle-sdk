@@ -25,26 +25,32 @@ class TestEditSettings(OracleOwnerActions):
         aggstate_utxo_datum = AggDatum.from_cbor(aggstate_utxo.output.datum.cbor)
 
         # Update-settings transaction
-        aggstate_utxo_datum.os_updated_nodes = self.updated_config["os_updated_nodes"]
-        aggstate_utxo_datum.os_updated_node_time = self.updated_config[
+        updated_oSettings = aggstate_utxo_datum.aggstate.ag_settings
+        updated_oSettings.os_updated_nodes = self.updated_config["os_updated_nodes"]
+        updated_oSettings.os_updated_node_time = self.updated_config[
             "os_updated_node_time"
         ]
-        aggstate_utxo_datum.os_aggregate_time = self.updated_config["os_aggregate_time"]
-        aggstate_utxo_datum.os_aggregate_change = self.updated_config[
+        updated_oSettings.os_aggregate_time = self.updated_config["os_aggregate_time"]
+        updated_oSettings.os_aggregate_change = self.updated_config[
             "os_aggregate_change"
         ]
-        aggstate_utxo_datum.os_node_fee_price = PriceRewards(
+        updated_oSettings.os_node_fee_price = PriceRewards(
             node_fee=self.updated_config["os_node_fee_price"]["node_fee"],
             aggregate_fee=self.updated_config["os_node_fee_price"]["aggregate_fee"],
             platform_fee=self.updated_config["os_node_fee_price"]["platform_fee"],
         )
 
-        aggstate_utxo_datum.os_iqr_multiplier = self.updated_config["os_iqr_multiplier"]
-        aggstate_utxo_datum.os_divergence = self.updated_config["os_divergence"]
+        updated_oSettings.os_iqr_multiplier = self.updated_config["os_iqr_multiplier"]
+        updated_oSettings.os_divergence = self.updated_config["os_divergence"]
 
-        updated_oSettings = aggstate_utxo_datum.aggstate.ag_settings
-
-        await self.oracle_owner.edit_settings(updated_oSettings)
+        platform_pkhs = [self.oracle_owner.pub_key_hash.payload.hex()]
+        tx = await self.oracle_owner.mk_edit_settings_tx(
+            platform_pkhs, updated_oSettings
+        )
+        await asyncio.sleep(5)
+        await self.oracle_owner.staged_query.sign_and_submit_tx(
+            tx, self.oracle_owner.signing_key
+        )
 
         await asyncio.sleep(30)
 
