@@ -171,3 +171,6 @@ oracle_deploy.yml
 oracle-owner-actions.yml
 run-node-simulator.yml
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# CBOR dumps
+*.cbor

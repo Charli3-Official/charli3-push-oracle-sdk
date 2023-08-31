@@ -134,6 +134,7 @@ async def main():
     for node in nodes:
         await node.collect(node.address)
         await asyncio.sleep(20)
+    print("Simulation end")
 
 
 if __name__ == "__main__":

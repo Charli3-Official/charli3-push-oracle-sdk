@@ -19,7 +19,11 @@ class TestAddNodes(OracleOwnerActions):
 
         new_nodes = [self.node_6_pkh_str, self.node_7_pkh_str]
 
-        await self.oracle_owner.add_nodes(new_nodes)
+        platform_pkhs = [self.oracle_owner.pub_key_hash.payload.hex()]
+        tx = await self.oracle_owner.mk_add_nodes_tx(platform_pkhs, new_nodes)
+        await self.oracle_owner.staged_query.sign_and_submit_tx(
+            tx, self.oracle_owner.signing_key
+        )
 
         await asyncio.sleep(30)
 

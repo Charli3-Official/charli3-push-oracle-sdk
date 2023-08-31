@@ -1,4 +1,5 @@
 """A CLI for managing the oracle owner actions."""
+from typing import List
 import asyncio
 import click
 import yaml
@@ -13,6 +14,7 @@ from pycardano import (
     AssetName,
     BlockFrostChainContext,
     PaymentSigningKey,
+    Transaction,
 )
 
 from charli3_offchain_core.chain_query import ChainQuery
@@ -22,6 +24,10 @@ from charli3_offchain_core.utils.logging_config import logging
 
 
 logger = logging.getLogger("oracle_owner_actions")
+
+# ANSI colors
+COLOR_RED = "\033[0;31m"
+COLOR_DEFAULT = "\033[39m"
 
 
 @click.group(invoke_without_command=True)
@@ -126,8 +132,8 @@ def setup(ctx, config_file):
 
 @cli.command()
 @click.pass_context
-def add_nodes(ctx):
-    """Add nodes to the oracle interactively."""
+def mk_add_nodes(ctx):
+    """Make add nodes tx interactively."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
     nodes_to_add = []
     while True:
@@ -135,15 +141,17 @@ def add_nodes(ctx):
         if node == "q":
             break
         nodes_to_add.append(node)
-    if nodes_to_add:
-        asyncio.run(oracle_owner.add_nodes(nodes_to_add))
-        logger.info("Nodes added: %s", nodes_to_add)
+    platform_pkhs = collect_multisig_pkhs()
+    if nodes_to_add and platform_pkhs:
+        tx = asyncio.run(oracle_owner.mk_add_nodes_tx(platform_pkhs, nodes_to_add))
+        logger.info("Created add nodes tx: %s", nodes_to_add)
+        write_tx_to_file("add_nodes.cbor", tx)
 
 
 @cli.command()
 @click.pass_context
-def remove_nodes(ctx):
-    """Remove nodes from the oracle interactively."""
+def mk_remove_nodes(ctx):
+    """Make remove nodes tx interactively."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
     nodes_to_remove = []
     while True:
@@ -151,9 +159,13 @@ def remove_nodes(ctx):
         if node == "q":
             break
         nodes_to_remove.append(node)
-    if nodes_to_remove:
-        asyncio.run(oracle_owner.remove_nodes(nodes_to_remove))
-        logger.info("Nodes removed: %s", nodes_to_remove)
+    platform_pkhs = collect_multisig_pkhs()
+    if nodes_to_remove and platform_pkhs:
+        tx = asyncio.run(
+            oracle_owner.mk_remove_nodes_tx(platform_pkhs, nodes_to_remove)
+        )
+        logger.info("Created remove nodes tx: %s", nodes_to_remove)
+        write_tx_to_file("remove_nodes.cbor", tx)
 
 
 @cli.command()
@@ -168,20 +180,30 @@ def add_funds(ctx, funds_to_add):
 
 @cli.command()
 @click.pass_context
-def oracle_close(ctx):
-    """Close the oracle."""
+def mk_oracle_close(ctx):
+    """Make tx for closing the oracle."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    asyncio.run(oracle_owner.oracle_close())
-    logger.info("Oracle closed.")
+    platform_pkhs = collect_multisig_pkhs()
+    if platform_pkhs:
+        tx = asyncio.run(oracle_owner.mk_oracle_close_tx(platform_pkhs))
+        logger.info("Created oracle close tx.")
+        write_tx_to_file("oracle_close.cbor", tx)
 
 
 @cli.command()
 @click.pass_context
-def platform_collect(ctx):
-    """Collect the oracle's platform rewards."""
+def mk_platform_collect(ctx):
+    """Make tx that collects the oracles rewards."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    asyncio.run(oracle_owner.platform_collect())
-    logger.info("Platform rewards collected.")
+    platform_pkhs = collect_multisig_pkhs()
+    raw_addr = click.prompt("Enter withdrawal address")
+    withdrawal_addr = Address.from_primitive(raw_addr)
+    if platform_pkhs and withdrawal_addr:
+        tx = asyncio.run(
+            oracle_owner.mk_platform_collect_tx(platform_pkhs, withdrawal_addr)
+        )
+        logger.info("Created platform collect tx.")
+        write_tx_to_file("platform_collect.cbor", tx)
 
 
 @cli.command()
@@ -195,8 +217,8 @@ def create_reference_script(ctx):
 
 @cli.command()
 @click.pass_context
-def edit_settings(ctx):
-    """Interactively edit the oracle settings."""
+def mk_edit_settings(ctx):
+    """Interactively create edit oracle settings tx."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
     ag_settings = oracle_owner.get_oracle_settings()
 
@@ -243,11 +265,81 @@ def edit_settings(ctx):
 
         changes_made = True
 
-    if changes_made:
-        asyncio.run(oracle_owner.edit_settings(ag_settings))
-        click.echo("Settings have been updated.")
+    platform_pkhs = collect_multisig_pkhs()
+
+    if changes_made and platform_pkhs:
+        tx = asyncio.run(oracle_owner.mk_edit_settings_tx(platform_pkhs, ag_settings))
+        logger.info("Created platform collect tx.")
+        write_tx_to_file("edit_settings.cbor", tx)
     else:
         click.echo("No changes were made.")
+
+
+@cli.command()
+@click.pass_context
+def sign_tx(ctx):
+    """Parse tx and sign interactively."""
+    oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
+    filename = click.prompt("Enter filename containing tx cbor")
+    tx = read_tx_from_file(filename)
+    click.echo(tx)
+    click.echo(
+        f"{COLOR_RED}Please review contents of the above tx tx manually before signing{COLOR_DEFAULT}",
+        color=True,
+    )
+    answer = click.prompt("Do you want to sign this tx? y/n")
+    if answer == "y":
+        oracle_owner.staged_query.sign_tx(tx, oracle_owner.signing_key)
+        logger.info("Tx signed")
+        write_tx_to_file(filename, tx)
+    else:
+        logger.info("Tx signature aborted")
+
+
+@cli.command()
+@click.pass_context
+def sign_and_submit_tx(ctx):
+    """Parse, sign and submit tx interactively."""
+    oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
+    filename = click.prompt("Enter filename containing tx cbor")
+    tx = read_tx_from_file(filename)
+    click.echo(tx)
+    click.echo(
+        f"{COLOR_RED}Please review contents of the above tx tx manually before signing{COLOR_DEFAULT}",
+        color=True,
+    )
+    answer = click.prompt("Do you want to sign and submit this tx? y/n")
+    if answer == "y":
+        asyncio.run(
+            oracle_owner.staged_query.sign_and_submit_tx(tx, oracle_owner.signing_key)
+        )
+        logger.info("Tx signed and submitted")
+    else:
+        logger.info("Tx signature aborted")
+
+
+def read_tx_from_file(filename: str) -> Transaction:
+    with open(filename, "r") as f:
+        tx_hex = f.read()
+        tx = Transaction.from_cbor(bytes.fromhex(tx_hex))
+        return tx
+
+
+def write_tx_to_file(filename: str, tx: Transaction) -> None:
+    with open(filename, "w") as f:
+        tx_hex = tx.to_cbor().hex()
+        f.write(tx_hex)
+        logger.info(f"Tx written to file {filename}")
+
+
+def collect_multisig_pkhs() -> List[str]:
+    platform_pkhs = []
+    while True:
+        pkh = click.prompt("Enter a platform pkh or 'q' to quit", default="q")
+        if pkh == "q":
+            break
+        platform_pkhs.append(pkh)
+    return platform_pkhs
 
 
 if __name__ == "__main__":

@@ -15,7 +15,11 @@ class TestOracleClose(OracleOwnerActions):
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     @pytest.mark.asyncio
     async def test_oracle_close(self):
-        await self.oracle_owner.oracle_close()
+        platform_pkhs = [self.oracle_owner.pub_key_hash.payload.hex()]
+        tx = await self.oracle_owner.mk_oracle_close_tx(platform_pkhs)
+        await self.oracle_owner.staged_query.sign_and_submit_tx(
+            tx, self.oracle_owner.signing_key
+        )
 
         await asyncio.sleep(30)
 
