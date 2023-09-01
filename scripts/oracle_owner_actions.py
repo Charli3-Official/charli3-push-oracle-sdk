@@ -232,6 +232,7 @@ def mk_edit_settings(ctx):
         "7": ("os_node_fee_price.platform_fee", int),
         "8": ("os_iqr_multiplier", int),
         "9": ("os_divergence", int),
+        "0": ("os_minimum_deposit", int),
     }
 
     changes_made = False

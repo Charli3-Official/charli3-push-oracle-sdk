@@ -123,6 +123,7 @@ class TestBase:
             os_updated_node_time=self.config["oracle_settings"]["os_updated_node_time"],
             os_aggregate_time=self.config["oracle_settings"]["os_aggregate_time"],
             os_aggregate_change=self.config["oracle_settings"]["os_aggregate_change"],
+            os_minimum_deposit=self.config["oracle_settings"]["os_minimum_deposit"],
             os_node_fee_price=PriceRewards(
                 node_fee=self.config["oracle_settings"]["os_node_fee_price"][
                     "node_fee"

@@ -111,7 +111,7 @@ class OracleStart:
 
         # Reference script output
         reference_script_utxo = TransactionOutput(
-            address=self.oracle_address, amount=62000000, script=self.oracle_script
+            address=self.oracle_address, amount=63000000, script=self.oracle_script
         )
 
         # Add reference script

@@ -110,6 +110,7 @@ class OracleSettings(PlutusData):
     os_updated_node_time: int
     os_aggregate_time: int
     os_aggregate_change: int
+    os_minimum_deposit: int
     os_node_fee_price: PriceRewards
     os_iqr_multiplier: int
     os_divergence: int
