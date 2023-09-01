@@ -24,6 +24,7 @@ oracle_settings:
   os_updated_node_time: 1800000
   os_aggregate_time: 1800000
   os_aggregate_change: 200
+  os_minimum_deposit: 1000000000
   os_node_fee_price:
     node_fee: 10
     aggregate_fee: 20

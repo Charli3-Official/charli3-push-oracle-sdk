@@ -34,6 +34,7 @@ class TestEditSettings(OracleOwnerActions):
         updated_oSettings.os_aggregate_change = self.updated_config[
             "os_aggregate_change"
         ]
+        updated_oSettings.os_minimum_deposit = self.updated_config["os_minimum_deposit"]
         updated_oSettings.os_node_fee_price = PriceRewards(
             node_fee=self.updated_config["os_node_fee_price"]["node_fee"],
             aggregate_fee=self.updated_config["os_node_fee_price"]["aggregate_fee"],

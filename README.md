@@ -142,11 +142,11 @@ Below are the available commands:
 
 ## Setup & Execution
 The integration tests are executed using [plutip](https://github.com/mlabs-haskell/plutip/tree/master), the [local cluster](https://github.com/mlabs-haskell/plutip/blob/master/local-cluster/README.md) of nodes.
-1. Navigate to the folder `integration-test`
-2. Execute `nix develop`
-3. Inside the Nix environment run the script `run_integration_tests.sh`
+   ```
+run: nix develop -c env -C integration-tests ./run_integration_tests.sh
+    ```
 The script generates a local node, which will be utilized by both the Ogmios and Kupo services.
-Note: Whenever modifications are applied to the contract address, ensure to promptly update the corresponding contract address in the designated `integration-test/configuration.yml` file.
+**Note**: Whenever modifications are applied to the contract `cborHex` file, ensure to  update the corresponding contract address inside the `integration-test/configuration.yml` file.
 
 ## Modules
 ### Minting Tokens
