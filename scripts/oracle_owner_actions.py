@@ -21,7 +21,7 @@ from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
 from charli3_offchain_core.utils.logging_config import logging
-from charli3_offchain_core.tx_validation import TxValidator
+from charli3_offchain_core.tx_validation import TxValidator, TxValidationException
 
 
 logger = logging.getLogger("oracle_owner_actions")
@@ -282,14 +282,18 @@ def mk_edit_settings(ctx):
 def sign_tx(ctx):
     """Parse tx and sign interactively."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    tx, filename = parse_and_check_tx_interactively(oracle_owner)
-    answer = click.prompt("Do you want to sign this tx? y/n")
-    if answer == "y":
-        oracle_owner.staged_query.sign_tx(tx, oracle_owner.signing_key)
-        logger.info("Tx signed")
-        write_tx_to_file(filename, tx)
+    try:
+        tx, filename = parse_and_check_tx_interactively(oracle_owner)
+    except TxValidationException as err:
+        logger.error(f"Tx validation failed, aborting, reason: {err}")
     else:
-        logger.info("Tx signature aborted")
+        answer = click.prompt("Do you want to sign this tx? y/n")
+        if answer == "y":
+            oracle_owner.staged_query.sign_tx(tx, oracle_owner.signing_key)
+            logger.info("Tx signed")
+            write_tx_to_file(filename, tx)
+        else:
+            logger.info("Tx signature aborted")
 
 
 @cli.command()
@@ -297,15 +301,21 @@ def sign_tx(ctx):
 def sign_and_submit_tx(ctx):
     """Parse, sign and submit tx interactively."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    tx, _ = parse_and_check_tx_interactively(oracle_owner)
-    answer = click.prompt("Do you want to sign and submit this tx? y/n")
-    if answer == "y":
-        asyncio.run(
-            oracle_owner.staged_query.sign_and_submit_tx(tx, oracle_owner.signing_key)
-        )
-        logger.info("Tx signed and submitted")
+    try:
+        tx, _ = parse_and_check_tx_interactively(oracle_owner)
+    except TxValidationException as err:
+        logger.error(f"Tx validation failed, aborting, reason: {err}")
     else:
-        logger.info("Tx signature aborted")
+        answer = click.prompt("Do you want to sign and submit this tx? y/n")
+        if answer == "y":
+            asyncio.run(
+                oracle_owner.staged_query.sign_and_submit_tx(
+                    tx, oracle_owner.signing_key
+                )
+            )
+            logger.info("Tx signed and submitted")
+        else:
+            logger.info("Tx signature aborted")
 
 
 def parse_and_check_tx_interactively(
@@ -328,7 +338,7 @@ def parse_and_check_tx_interactively(
         "Were you the one who created and balanced this tx with your own inputs? y/n"
     )
     if answer == "y":
-        tx_id = click.prompt("Enter tx id")
+        tx_id = click.prompt("Enter original tx id")
         allow_own_inputs = True
         tx_validator.raise_if_wrong_tx_id(tx_id)
     tx_validator.raise_if_invalid(allow_own_inputs)
