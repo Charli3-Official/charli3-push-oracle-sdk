@@ -1,5 +1,5 @@
 """A CLI for managing the oracle owner actions."""
-from typing import List
+from typing import List, Tuple
 import asyncio
 import click
 import yaml
@@ -21,6 +21,7 @@ from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
 from charli3_offchain_core.utils.logging_config import logging
+from charli3_offchain_core.tx_validation import TxValidator
 
 
 logger = logging.getLogger("oracle_owner_actions")
@@ -144,7 +145,7 @@ def mk_add_nodes(ctx):
     platform_pkhs = collect_multisig_pkhs()
     if nodes_to_add and platform_pkhs:
         tx = asyncio.run(oracle_owner.mk_add_nodes_tx(platform_pkhs, nodes_to_add))
-        logger.info("Created add nodes tx: %s", nodes_to_add)
+        logger.info("Created add nodes tx id: %s", tx.id)
         write_tx_to_file("add_nodes.cbor", tx)
 
 
@@ -164,7 +165,7 @@ def mk_remove_nodes(ctx):
         tx = asyncio.run(
             oracle_owner.mk_remove_nodes_tx(platform_pkhs, nodes_to_remove)
         )
-        logger.info("Created remove nodes tx: %s", nodes_to_remove)
+        logger.info("Created remove nodes tx id: %s", tx.id)
         write_tx_to_file("remove_nodes.cbor", tx)
 
 
@@ -186,7 +187,7 @@ def mk_oracle_close(ctx):
     platform_pkhs = collect_multisig_pkhs()
     if platform_pkhs:
         tx = asyncio.run(oracle_owner.mk_oracle_close_tx(platform_pkhs))
-        logger.info("Created oracle close tx.")
+        logger.info(f"Created oracle close tx id: {tx.id}")
         write_tx_to_file("oracle_close.cbor", tx)
 
 
@@ -202,7 +203,7 @@ def mk_platform_collect(ctx):
         tx = asyncio.run(
             oracle_owner.mk_platform_collect_tx(platform_pkhs, withdrawal_addr)
         )
-        logger.info("Created platform collect tx.")
+        logger.info(f"Created platform collect tx id: {tx.id}")
         write_tx_to_file("platform_collect.cbor", tx)
 
 
@@ -270,7 +271,7 @@ def mk_edit_settings(ctx):
 
     if changes_made and platform_pkhs:
         tx = asyncio.run(oracle_owner.mk_edit_settings_tx(platform_pkhs, ag_settings))
-        logger.info("Created platform collect tx.")
+        logger.info(f"Created platform collect tx id: {tx.id}")
         write_tx_to_file("edit_settings.cbor", tx)
     else:
         click.echo("No changes were made.")
@@ -281,13 +282,7 @@ def mk_edit_settings(ctx):
 def sign_tx(ctx):
     """Parse tx and sign interactively."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    filename = click.prompt("Enter filename containing tx cbor")
-    tx = read_tx_from_file(filename)
-    click.echo(tx)
-    click.echo(
-        f"{COLOR_RED}Please review contents of the above tx tx manually before signing{COLOR_DEFAULT}",
-        color=True,
-    )
+    tx, filename = parse_and_check_tx_interactively(oracle_owner)
     answer = click.prompt("Do you want to sign this tx? y/n")
     if answer == "y":
         oracle_owner.staged_query.sign_tx(tx, oracle_owner.signing_key)
@@ -302,13 +297,7 @@ def sign_tx(ctx):
 def sign_and_submit_tx(ctx):
     """Parse, sign and submit tx interactively."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    filename = click.prompt("Enter filename containing tx cbor")
-    tx = read_tx_from_file(filename)
-    click.echo(tx)
-    click.echo(
-        f"{COLOR_RED}Please review contents of the above tx tx manually before signing{COLOR_DEFAULT}",
-        color=True,
-    )
+    tx, _ = parse_and_check_tx_interactively(oracle_owner)
     answer = click.prompt("Do you want to sign and submit this tx? y/n")
     if answer == "y":
         asyncio.run(
@@ -317,6 +306,38 @@ def sign_and_submit_tx(ctx):
         logger.info("Tx signed and submitted")
     else:
         logger.info("Tx signature aborted")
+
+
+def parse_and_check_tx_interactively(
+    oracle_owner: OracleOwner,
+) -> Tuple[Transaction, str]:
+    """Parse, validate, and return transaction with its filename"""
+    filename = click.prompt("Enter filename containing tx cbor")
+    tx = read_tx_from_file(filename)
+    allow_own_inputs = False
+    tx_validator = TxValidator(
+        oracle_owner.network,
+        oracle_owner.chainquery,
+        oracle_owner.verification_key,
+        oracle_owner.stake_key,
+        oracle_owner.oracle_addr,
+        oracle_owner.aggstate_nft,
+        tx,
+    )
+    answer = click.prompt(
+        "Were you the one who created and balanced this tx with your own inputs? y/n"
+    )
+    if answer == "y":
+        tx_id = click.prompt("Enter tx id")
+        allow_own_inputs = True
+        tx_validator.raise_if_wrong_tx_id(tx_id)
+    tx_validator.raise_if_invalid(allow_own_inputs)
+    click.echo(tx)
+    click.echo(
+        f"{COLOR_RED}Please review contents of the above tx once again manually before signing{COLOR_DEFAULT}",
+        color=True,
+    )
+    return tx, filename
 
 
 def read_tx_from_file(filename: str) -> Transaction:
