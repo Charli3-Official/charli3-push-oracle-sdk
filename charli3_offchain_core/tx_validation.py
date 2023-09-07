@@ -9,7 +9,11 @@ from pycardano import (
     VerificationKeyHash,
 )
 from charli3_offchain_core.utils.logging_config import logging
-from charli3_offchain_core.oracle_checks import check_type, filter_utxos_by_asset
+from charli3_offchain_core.oracle_checks import (
+    check_type,
+    filter_utxos_by_asset,
+    filter_utxos_by_currency,
+)
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.datums import AggDatum
 
@@ -65,6 +69,7 @@ class TxValidator:
 
         self._validate_own_inputs()
         self._validate_signatories()
+        self._validate_oracle_inputs()
 
     def _validate_own_inputs(
         self,
@@ -108,11 +113,22 @@ class TxValidator:
             for pkh in aggstate_datum.aggstate.ag_settings.os_platform.pmultisig_pkhs
         ]
         for signatory in self.tx.transaction_body.required_signers:
-            if not signatory in allowed_signatories:
+            if signatory not in allowed_signatories:
                 self.all_signatories_allowed = False
                 break
         if not self.all_signatories_allowed:
             logger.warning("Transaction required signature outside of oracle platform")
+
+    def _validate_oracle_inputs(self) -> None:
+        self.contains_oracle_inputs = False
+        oracle_utxos = filter_utxos_by_currency(
+            self.chainquery.context.utxos(self.oracle_addr), self.aggstate_nft.keys()[0]
+        )
+        for utxo in oracle_utxos:
+            if utxo.input in self.tx.transaction_body.inputs:
+                self.contains_oracle_inputs = True
+        if not self.contains_oracle_inputs:
+            logger.warning("Transaction does not consume any oracle inputs")
 
     def raise_if_invalid(self, allow_own_inputs: bool) -> None:
         """Raises TxValidationException if tx is not valid"""
@@ -133,4 +149,9 @@ class TxValidator:
         if not self.all_signatories_allowed:
             raise TxValidationException(
                 "Transaction required signature outside of oracle platform"
+            )
+
+        if not self.contains_oracle_inputs:
+            raise TxValidationException(
+                "Transaction does not consume any oracle inputs"
             )
