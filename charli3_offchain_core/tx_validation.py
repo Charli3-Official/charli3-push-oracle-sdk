@@ -7,6 +7,7 @@ from pycardano import (
     UTxO,
     MultiAsset,
     VerificationKeyHash,
+    TransactionId,
 )
 from charli3_offchain_core.utils.logging_config import logging
 from charli3_offchain_core.oracle_checks import (
@@ -155,3 +156,12 @@ class TxValidator:
             raise TxValidationException(
                 "Transaction does not consume any oracle inputs"
             )
+
+    def raise_if_wrong_tx_id(self, tx_id: str) -> None:
+        """
+        Raises TxValidationException if tx has not matching tx id.
+        This is useful for wallet, who balanced the tx,
+        therefore it contains his own inputs and he knows tx id.
+        """
+        if self.tx.id != TransactionId.from_primitive(tx_id):
+            raise TxValidationException("Transaction has wrong tx id")
