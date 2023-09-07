@@ -34,7 +34,7 @@ class TxValidator:
         chainquery: ChainQuery,
         verification_key: PaymentVerificationKey,
         stake_key: Optional[PaymentVerificationKey],
-        oracle_addr: str,
+        oracle_addr: Address,
         aggstate_nft: MultiAsset,
         tx: Transaction,
     ) -> None:
@@ -42,7 +42,7 @@ class TxValidator:
         check_type(chainquery, ChainQuery, "chainquery")
         check_type(tx, Transaction, "tx")
         check_type(verification_key, PaymentVerificationKey, "verification_key")
-        check_type(oracle_addr, str, "oracle_addr")
+        check_type(oracle_addr, Address, "oracle_addr")
         check_type(aggstate_nft, MultiAsset, "aggstate_nft")
         if stake_key is not None:
             check_type(stake_key, PaymentVerificationKey, "stake_key")
@@ -64,7 +64,7 @@ class TxValidator:
             payment_part=self.pub_key_hash,
             network=self.network,
         )
-        self.oracle_addr = Address.from_primitive(oracle_addr)
+        self.oracle_addr = oracle_addr
         self.tx = tx
         self.aggstate_nft = aggstate_nft
 
@@ -79,9 +79,9 @@ class TxValidator:
         self.has_own_collateral_inputs = False
         body = self.tx.transaction_body
 
-        own_utxos: List[UTxO] = self.chainquery.get_utxos(
+        own_utxos: List[UTxO] = self.chainquery.context.utxos(
             self.full_address
-        ) + self.chainquery.get_utxos(self.payment_address)
+        ) + self.chainquery.context.utxos(self.payment_address)
 
         tx_inputs = body.inputs
         tx_collateral_inputs = body.collateral
@@ -107,34 +107,50 @@ class TxValidator:
 
         self.all_signatories_allowed = True
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
-        aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)[0]
-        aggstate_datum: AggDatum = AggDatum.from_cbor(aggstate_utxo.output.datum.cbor)
-        allowed_signatories: List[VerificationKeyHash] = [
-            VerificationKeyHash.from_primitive(pkh)
-            for pkh in aggstate_datum.aggstate.ag_settings.os_platform.pmultisig_pkhs
-        ]
-        for signatory in self.tx.transaction_body.required_signers:
-            if signatory not in allowed_signatories:
-                self.all_signatories_allowed = False
-                break
-        if not self.all_signatories_allowed:
-            logger.warning("Transaction required signature outside of oracle platform")
+        aggstate_utxos: List[UTxO] = filter_utxos_by_asset(
+            oracle_utxos, self.aggstate_nft
+        )
+        aggstate_utxo: UTxO = dict(enumerate(aggstate_utxos)).get(0)
+        if aggstate_utxo:
+            self.oracle_exists = True
+            aggstate_datum: AggDatum = AggDatum.from_cbor(
+                aggstate_utxo.output.datum.cbor
+            )
+            allowed_signatories: List[VerificationKeyHash] = [
+                VerificationKeyHash.from_primitive(pkh)
+                for pkh in aggstate_datum.aggstate.ag_settings.os_platform.pmultisig_pkhs
+            ]
+            for signatory in self.tx.transaction_body.required_signers:
+                if signatory not in allowed_signatories:
+                    self.all_signatories_allowed = False
+                    break
+            if not self.all_signatories_allowed:
+                logger.warning(
+                    "Transaction required signature outside of oracle platform"
+                )
+        else:
+            self.oracle_exists = False
+            logger.warning("Could not find aggstate utxo, check oracle exists")
 
     def _validate_oracle_inputs(self) -> None:
         self.contains_oracle_inputs = False
+        oracle_nft_currency = next(iter(self.aggstate_nft.keys()))
         oracle_utxos = filter_utxos_by_currency(
-            self.chainquery.context.utxos(self.oracle_addr), self.aggstate_nft.keys()[0]
+            self.chainquery.context.utxos(self.oracle_addr), oracle_nft_currency
         )
         for utxo in oracle_utxos:
             if utxo.input in self.tx.transaction_body.inputs:
                 self.contains_oracle_inputs = True
         if not self.contains_oracle_inputs:
-            logger.warning("Transaction does not consume any oracle inputs")
+            logger.warning("Transaction does not consume any up-to-date oracle inputs")
 
     def raise_if_invalid(self, allow_own_inputs: bool) -> None:
         """Raises TxValidationException if tx is not valid"""
         if not self.tx.valid:
             raise TxValidationException("Transaction not valid")
+
+        if not self.oracle_exists:
+            raise TxValidationException("Oracle does not exist")
 
         if self.has_own_inputs and not allow_own_inputs:
             raise TxValidationException("Transaction contains own wallets inputs")
@@ -154,14 +170,14 @@ class TxValidator:
 
         if not self.contains_oracle_inputs:
             raise TxValidationException(
-                "Transaction does not consume any oracle inputs"
+                "Transaction does not consume any up-to-date oracle inputs"
             )
 
     def raise_if_wrong_tx_id(self, tx_id: str) -> None:
         """
         Raises TxValidationException if tx has not matching tx id.
         This is useful for wallet, who balanced the tx,
-        therefore it contains his own inputs and he knows tx id.
+        therefore it contains his own inputs and he knows original tx id.
         """
         if self.tx.id != TransactionId.from_primitive(tx_id):
             raise TxValidationException("Transaction has wrong tx id")
