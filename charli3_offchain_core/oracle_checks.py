@@ -37,6 +37,24 @@ def filter_utxos_by_asset(utxos: List[UTxO], asset: MultiAsset) -> List[UTxO]:
     return list(filter(lambda x: x.output.amount.multi_asset >= asset, utxos))
 
 
+def filter_utxos_by_currency(utxos: List[UTxO], currency: ScriptHash) -> List[UTxO]:
+    """Filter list of UTxOs by given currency type.
+
+    Args:
+        utxos: A list of UTxO objects to be filtered.
+        currency: The currency type to filter by.
+
+    Returns:
+        A list of UTxO objects that match the specified currency type.
+    """
+    if utxos is None or not utxos:
+        return []
+
+    return list(
+        filter(lambda x: x.output.amount.multi_asset.get(currency) is not None, utxos)
+    )
+
+
 def filter_utxos_by_datum_hash(utxos: List[UTxO], datum_hash: DatumHash):
     """filter list of UTxOs by given datum_hash"""
     result: List[UTxO] = []
