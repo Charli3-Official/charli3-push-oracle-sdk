@@ -50,6 +50,14 @@ class TestDeployment(TestBase):
             args=["-a", "-v"],
         )
 
+        # Oracle contract script using a cbor file
+        # oracle_script_path = os.path.join(self.DIR_PATH, "OracleV3.plutus")
+        # with open(oracle_script_path, "r") as f:
+        #     script_hex = f.read()
+        #     oracle_plutus_script_v2 = PlutusV2Script(
+        #         cbor2.loads(bytes.fromhex(script_hex))
+        #     )
+
         # Contract hash
         script_hash = plutus_script_hash(oracle_plutus_script_v2)
 
@@ -76,7 +84,7 @@ class TestDeployment(TestBase):
         # await asyncio.sleep(30)
 
         assert self.oracle_addr == oracle_script_address, (
-            f"Unexpected contract address: {oracle_script_address}"
+            f"Unexpected contract address: {oracle_script_address} "
             f"Expected: {self.oracle_addr}"
         )
 

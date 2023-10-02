@@ -54,7 +54,9 @@ class TestAggregate(OracleOwnerActions):
         node_utxos: List[UTxO] = filter_utxos_by_asset(
             updated_oracle_utxos, self.single_node_nft
         )
-        print("NODES", node_utxos)
+
+        updated_nodes = 0
+
         for node_utxo in node_utxos:
             node_datum = NodeDatum.from_cbor(node_utxo.output.datum.cbor)
             node_feed = node_datum.node_state.ns_feed.df.df_value
@@ -62,6 +64,12 @@ class TestAggregate(OracleOwnerActions):
             assert (
                 41150 == node_feed
             ), f"Expected node feed value: 41150, but got: {node_feed}"
+
+            updated_nodes += 1
+
+        assert (
+            3 == updated_nodes
+        ), f"Expected updated nodes: 3, but got: {updated_nodes}"
 
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     @pytest.mark.asyncio
