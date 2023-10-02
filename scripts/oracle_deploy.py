@@ -197,6 +197,7 @@ if __name__ == "__main__":
         os_aggregate_time=config["oracle_settings"]["os_aggregate_time"],
         os_aggregate_change=config["oracle_settings"]["os_aggregate_change"],
         os_minimum_deposit=config["oracle_settings"]["os_minimum_deposit"],
+        os_aggregate_valid_range=config["oracle_settings"]["os_aggregate_valid_range"],
         os_node_fee_price=PriceRewards(
             node_fee=config["oracle_settings"]["os_node_fee_price"]["node_fee"],
             aggregate_fee=config["oracle_settings"]["os_node_fee_price"][

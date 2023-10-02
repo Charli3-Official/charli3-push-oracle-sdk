@@ -224,6 +224,7 @@ def mk_edit_settings(ctx):
     ag_settings = oracle_owner.get_oracle_settings()
 
     SETTINGS_MAP = {
+        "0": ("os_minimum_deposit", int),
         "1": ("os_updated_nodes", int),
         "2": ("os_updated_node_time", int),
         "3": ("os_aggregate_time", int),
@@ -233,7 +234,7 @@ def mk_edit_settings(ctx):
         "7": ("os_node_fee_price.platform_fee", int),
         "8": ("os_iqr_multiplier", int),
         "9": ("os_divergence", int),
-        "0": ("os_minimum_deposit", int),
+        "10": ("os_aggregate_valid_range", int),
     }
 
     changes_made = False
