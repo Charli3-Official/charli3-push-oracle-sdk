@@ -56,21 +56,33 @@ def create_c3_oracle_rate_nft(token_name, minting_policy) -> Union[MultiAsset, N
 
 
 c3_oracle_rate_nft_hash = None
-if "oracle_info" in config and "c3_rate_nft_hash" in config["oracle_info"]:
+if (
+    "oracle_info" in config
+    and "c3_rate_nft_hash" in config["oracle_info"]
+    and config["oracle_info"]["c3_rate_nft_hash"]
+):
     c3_oracle_rate_nft_hash = ScriptHash.from_primitive(
         config["oracle_info"]["c3_rate_nft_hash"]
     )
 
 c3_oracle_rate_nft_name = None
-if "oracle_info" in config and "c3_rate_nft_name" in config["oracle_info"]:
-    c3_oracle_rate_nft_name = config["oracle_info"]["c3_rate_nft_name"] or None
+if (
+    "oracle_info" in config
+    and "c3_rate_nft_name" in config["oracle_info"]
+    and config["oracle_info"]["c3_rate_nft_name"]
+):
+    c3_oracle_rate_nft_name = config["oracle_info"]["c3_rate_nft_name"]
 
 c3_oracle_rate_nft = create_c3_oracle_rate_nft(
     c3_oracle_rate_nft_name, c3_oracle_rate_nft_hash
 )
 
 c3_oracle_rate_address = None
-if "oracle_info" in config and "c3_oracle_rate_address" in config["oracle_info"]:
+if (
+    "oracle_info" in config
+    and "c3_oracle_rate_address" in config["oracle_info"]
+    and config["oracle_info"]["c3_oracle_rate_address"]
+):
     c3_oracle_rate_address = Address.from_primitive(
         config["oracle_info"]["c3_oracle_rate_address"]
     )

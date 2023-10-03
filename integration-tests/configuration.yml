@@ -1,17 +1,18 @@
 oracle_owner:
   script_start_slot: 1
-  tC3_initial_amount: 3000
+  tC3_initial_amount: 300000
   tC3_add_funds: 1000000000
 
 oracle_info:
-  oracle_script_address: addr1wxs93uuvy4rawnmvklkxyl3yxl7r50q9efepqw76p0kkwdcwra0rz
+  oracle_script_address: addr1wy35d079t453ns33mgq499l2w9smls5qcrczyual2mj7zxgt3de2y
 
 oracle_settings:
-  os_updated_nodes: 6000
-  os_updated_node_time: 1800000
-  os_aggregate_time: 1800000
+  os_updated_nodes: 10000
+  os_updated_node_time: 300000
+  os_aggregate_time: 150000
   os_aggregate_change: 200
   os_minimum_deposit: 1000000000
+  os_aggregate_valid_range: 300000
   os_node_fee_price:
     node_fee: 10
     aggregate_fee: 20
@@ -27,6 +28,7 @@ updated_oracle_settings:
   os_aggregate_time: 2400000
   os_aggregate_change: 500
   os_minimum_deposit: 1000000000
+  os_aggregate_valid_range: 300000
   os_node_fee_price:
     node_fee: 12
     aggregate_fee: 15

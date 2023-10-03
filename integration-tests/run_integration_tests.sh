@@ -36,9 +36,9 @@ mkdir -p "$PWD"/db
 local-cluster -n 9 \
     --dump-info-json "$PWD"/local-cluster-info.json \
     -d "$PWD"/wallets/ \
-    --ada 200 \
+    --ada 10000 \
     --utxos 5  \
-    -s 1s -e 3600 \
+    -s 1s -e 43200 \
     > /dev/null 2>&1 &
 
 # Save the PID of the local-cluster process
@@ -82,7 +82,47 @@ sleep 5
 
 
 # Tests
-poetry run pytest tests
+# For all tests
+# poetry run pytest tests
+
+# Function to run a specific test pattern
+run_test() {
+    local test_pattern="$1"
+    poetry run pytest tests -v -k "$test_pattern"
+}
+
+# Function to run a test pattern multiple times with a delay
+run_test_multiple_times() {
+    local test_pattern="$1"
+    local count="$2"
+    local delay="$3"
+
+    for i in $(seq 1 "$count"); do
+        echo "Running test iteration $i for pattern: $test_pattern"
+        run_test "$test_pattern"
+        sleep "$delay"
+    done
+}
+
+# Execute tests
+run_test "TestDeployment"
+
+# For the TestAggregate, we want to run it multiple times with a delay
+# The delay ensures any side effects from previous runs are cleared up
+run_test_multiple_times "TestAggregate" 2 3m
+
+run_test "TestAddFunds or TestEditSettings or TestAddNodes or TestRemoveNodes or TestNodeCollect or TestPlatformCollect or TestOracleClose"
+
+# For aggregation-tx
+# poetry run pytest tests -v -k "TestDeployment or TestAggregate"
+
+# For aggregation-tx in a loop
+# poetry run pytest tests -v -k "TestDeployment"
+# for i in {1..100}; do
+#   echo "Running test iteration $i"
+#   poetry run pytest tests -v -k "TestAggregate"
+#   sleep 3m
+# done
 
 # echo "Press Ctrl + C to stop"
 # while true; do sleep 1; done
