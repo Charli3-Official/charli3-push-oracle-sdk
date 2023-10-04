@@ -35,11 +35,7 @@ stake_vk = PaymentVerificationKey.from_primitive(stake_public_key)
 
 extended_signing_key = ExtendedSigningKey.from_hdwallet(hdwallet_spend)
 owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network)
-owner_minting_script = OwnerScript(
-    network,
-    chain_query,
-    spend_vk,
-)
+owner_minting_script = OwnerScript(chain_query, is_mock_script=True)
 
 
 def submit_tx_builder(tx_builder: TransactionBuilder):

@@ -13,3 +13,7 @@ oracle_owner:
   c3_token_hash: "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
   c3_token_name: "PAYMENTTOKEN"
   script_start_slot: 28585322
+  oracle_platform:
+    multisig_pkhs:
+      ["1a550d57572584e1add125b5712f709ac3b9828ad86581a4759022ba"]
+    multisig_threshold: 1

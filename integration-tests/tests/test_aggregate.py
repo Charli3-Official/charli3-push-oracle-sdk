@@ -13,7 +13,7 @@ from charli3_offchain_core.node import Node
 
 
 ### TODO fix non deterministic test
-@pytest.mark.order(6)
+@pytest.mark.order(7)
 class TestAggregate(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)

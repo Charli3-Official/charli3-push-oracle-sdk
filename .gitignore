@@ -174,3 +174,6 @@ run-node-simulator.yml
 
 # CBOR dumps
 *.cbor
+
+# temporary files
+tmp

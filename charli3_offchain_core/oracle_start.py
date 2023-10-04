@@ -1,10 +1,11 @@
 """Start oracle by submitting a reference script and minting its NFT"""
-from typing import Optional, Union
+from typing import Optional, Union, List
 from pycardano import (
     Network,
     Address,
+    Transaction,
     PaymentVerificationKey,
-    PaymentExtendedSigningKey,
+    VerificationKeyHash,
     ExtendedSigningKey,
     PaymentSigningKey,
     TransactionOutput,
@@ -30,7 +31,7 @@ from charli3_offchain_core.datums import (
     OracleReward,
     RewardInfo,
 )
-from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.owner_script import OwnerScript
 
 
@@ -48,11 +49,14 @@ class OracleStart:
         settings: OracleSettings,
         c3_token_hash: ScriptHash,
         c3_token_name: AssetName,
-        native_script_with_signer: bool = True,
+        native_script_with_signers: bool = True,
         stake_key: Optional[PaymentVerificationKey] = None,
     ) -> None:
         self.network = network
         self.chain_query = chain_query
+        self.staged_query = StagedTxSubmitter(
+            chain_query.blockfrost_context, chain_query.ogmios_context
+        )
         self.context = self.chain_query.context
         self.signing_key = signing_key
         self.verification_key = verification_key
@@ -76,20 +80,28 @@ class OracleStart:
         self.node_pkh_list = self.oracle_settings.os_node_list
         self.c3_token_hash = c3_token_hash
         self.c3_token_name = c3_token_name
-        self.native_script_with_signer = native_script_with_signer
-
-    async def start_oracle(self, initial_c3_amount: int):
-        """Start oracle"""
+        self.native_script_with_signers = native_script_with_signers
         # Create a locking script that hold oracle script and also mints oracle NFT
-        if self.native_script_with_signer:
+        if self.native_script_with_signers:
             oracle_owner = OwnerScript(
-                self.network, self.chain_query, self.verification_key
+                self.chain_query,
+                [
+                    VerificationKeyHash.from_primitive(pkh)
+                    for pkh in self.oracle_settings.os_platform.pmultisig_pkhs
+                ],
+                self.oracle_settings.os_platform.pmultisig_threshold,
             )
         else:
-            oracle_owner = OwnerScript(self.network, self.chain_query, None)
-        owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
-        owner_script_hash = owner_script.hash()
-        print(owner_script_hash)
+            oracle_owner = OwnerScript(self.chain_query, is_mock_script=True)
+        self.oracle_owner = oracle_owner
+        self.owner_script = oracle_owner.mk_owner_script(self.script_start_slot)
+        self.owner_script_hash = self.owner_script.hash()
+
+    async def mk_start_oracle_tx(
+        self, platform_multisig_pkhs: List[str], initial_c3_amount: int
+    ) -> Transaction:
+        """Start oracle"""
+        print(self.owner_script_hash)
         c3_asset = MultiAsset(
             {self.c3_token_hash: Asset({self.c3_token_name: initial_c3_amount})}
         )
@@ -101,7 +113,7 @@ class OracleStart:
 
         ############ Reference script creation: ############
         owner_script_addr = Address(
-            payment_part=owner_script_hash, network=self.network
+            payment_part=self.owner_script_hash, network=self.network
         )
 
         print(f"Locking script address: {owner_script_addr}")
@@ -109,18 +121,10 @@ class OracleStart:
 
         print(self.context.utxos(self.address))
 
-        # Reference script output
-        reference_script_utxo = TransactionOutput(
-            address=self.oracle_address, amount=63000000, script=self.oracle_script
-        )
-
-        # Add reference script
-        builder.add_output(reference_script_utxo)
-
         ############ Oracle NFT minting: ############
         oracle_nfts = MultiAsset.from_primitive(
             {
-                owner_script_hash.payload: {
+                self.owner_script_hash.payload: {
                     b"NodeFeed": len(
                         self.node_pkh_list
                     ),  # Negative sign indicates burning
@@ -132,19 +136,19 @@ class OracleStart:
         )
         builder.mint = oracle_nfts
         single_node_nft = MultiAsset.from_primitive(
-            {owner_script_hash.payload: {b"NodeFeed": 1}}
+            {self.owner_script_hash.payload: {b"NodeFeed": 1}}
         )
         oracle_nft = MultiAsset.from_primitive(
-            {owner_script_hash.payload: {b"OracleFeed": 1}}
+            {self.owner_script_hash.payload: {b"OracleFeed": 1}}
         )
         aggstate_nft = MultiAsset.from_primitive(
-            {owner_script_hash.payload: {b"AggState": 1}}
+            {self.owner_script_hash.payload: {b"AggState": 1}}
         )
         reward_nft = MultiAsset.from_primitive(
-            {owner_script_hash.payload: {b"Reward": 1}}
+            {self.owner_script_hash.payload: {b"Reward": 1}}
         )
         # Set native script
-        builder.native_scripts = [owner_script]
+        builder.native_scripts = [self.owner_script]
 
         node_reward_list = []
         # Prepare each datum
@@ -195,6 +199,11 @@ class OracleStart:
         )
         builder.add_output(reward_output)
 
-        await self.chain_query.submit_tx_builder(
-            builder, self.signing_key, self.address
+        platform_multisig_vkhs = list(
+            map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
         )
+        builder.required_signers = platform_multisig_vkhs
+
+        tx = await self.staged_query.build_tx(builder, self.signing_key, self.address)
+
+        return tx

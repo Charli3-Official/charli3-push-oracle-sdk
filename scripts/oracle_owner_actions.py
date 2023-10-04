@@ -1,5 +1,5 @@
 """A CLI for managing the oracle owner actions."""
-from typing import List, Tuple
+from typing import Tuple
 import asyncio
 import click
 import yaml
@@ -15,8 +15,17 @@ from pycardano import (
     BlockFrostChainContext,
     PaymentSigningKey,
     Transaction,
+    VerificationKeyHash,
 )
 
+from scripts.cli_common import (
+    collect_multisig_pkhs,
+    write_tx_to_file,
+    load_plutus_script,
+    read_tx_from_file,
+    COLOR_DEFAULT,
+    COLOR_RED,
+)
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
@@ -25,10 +34,6 @@ from charli3_offchain_core.tx_validation import TxValidator, TxValidationExcepti
 
 
 logger = logging.getLogger("oracle_owner_actions")
-
-# ANSI colors
-COLOR_RED = "\033[0;31m"
-COLOR_DEFAULT = "\033[39m"
 
 
 @click.group(invoke_without_command=True)
@@ -103,10 +108,14 @@ def setup(ctx, config_file):
     oracle_nft = MultiAsset.from_primitive({nft_hash: {b"OracleFeed": 1}})
     reward_nft = MultiAsset.from_primitive({nft_hash: {b"Reward": 1}})
     script_start_slot = oracle_owner_config["oracle_owner"]["script_start_slot"]
+    oracle_platform = oracle_owner_config["oracle_owner"]["oracle_platform"]
     native_script = OwnerScript(
-        network,
         chain_query,
-        spend_vk,
+        [
+            VerificationKeyHash.from_primitive(pkh)
+            for pkh in oracle_platform["multisig_pkhs"]
+        ],
+        oracle_platform["multisig_threshold"],
     ).mk_owner_script(script_start_slot)
     logger.info("Owner address: %s", owner_addr)
 
@@ -209,10 +218,16 @@ def mk_platform_collect(ctx):
 
 @cli.command()
 @click.pass_context
-def create_reference_script(ctx):
+@click.option(
+    "-p",
+    "--script-path",
+    help="Path to existing precompiled oracle script",
+)
+def create_reference_script(ctx, script_path):
     """Create the reference script."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    asyncio.run(oracle_owner.create_reference_script())
+    oracle_script = load_plutus_script(script_path)
+    asyncio.run(oracle_owner.create_reference_script(oracle_script))
     logger.info("Reference script created.")
 
 
@@ -349,30 +364,6 @@ def parse_and_check_tx_interactively(
         color=True,
     )
     return tx, filename
-
-
-def read_tx_from_file(filename: str) -> Transaction:
-    with open(filename, "r") as f:
-        tx_hex = f.read()
-        tx = Transaction.from_cbor(bytes.fromhex(tx_hex))
-        return tx
-
-
-def write_tx_to_file(filename: str, tx: Transaction) -> None:
-    with open(filename, "w") as f:
-        tx_hex = tx.to_cbor().hex()
-        f.write(tx_hex)
-        logger.info(f"Tx written to file {filename}")
-
-
-def collect_multisig_pkhs() -> List[str]:
-    platform_pkhs = []
-    while True:
-        pkh = click.prompt("Enter a platform pkh or 'q' to quit", default="q")
-        if pkh == "q":
-            break
-        platform_pkhs.append(pkh)
-    return platform_pkhs
 
 
 if __name__ == "__main__":

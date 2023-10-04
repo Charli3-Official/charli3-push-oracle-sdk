@@ -106,6 +106,7 @@ run_test_multiple_times() {
 
 # Execute tests
 run_test "TestDeployment"
+run_test "TestCreateReferenceScript"
 
 # For the TestAggregate, we want to run it multiple times with a delay
 # The delay ensures any side effects from previous runs are cleared up

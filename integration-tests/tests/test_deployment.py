@@ -12,7 +12,6 @@ from pycardano import (
     RawCBOR,
     plutus_script_hash,
     UTxO,
-    PlutusV2Script,
 )
 from .base import TEST_RETRIES, TestBase
 from charli3_offchain_core.oracle_start import OracleStart
@@ -75,13 +74,13 @@ class TestDeployment(TestBase):
             settings=self.agSettings,
             c3_token_hash=self.payment_script_hash,
             c3_token_name=self.tC3_token_name,
-            native_script_with_signer=False,
+            native_script_with_signers=False,
         )
 
         # Contract's deployment
-        await deployment.start_oracle(self.tC3_initial_amount)
-
-        # await asyncio.sleep(30)
+        platform_pkhs = [self.owner_verification_key.hash().payload.hex()]
+        tx = await deployment.mk_start_oracle_tx(platform_pkhs, self.tC3_initial_amount)
+        await self.staged_query.sign_and_submit_tx(tx, self.owner_signing_key)
 
         assert self.oracle_addr == oracle_script_address, (
             f"Unexpected contract address: {oracle_script_address} "

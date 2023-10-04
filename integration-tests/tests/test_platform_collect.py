@@ -11,7 +11,7 @@ from charli3_offchain_core.datums import AggDatum, PriceRewards, RewardDatum
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 
-@pytest.mark.order(8)
+@pytest.mark.order(9)
 class TestPlatformCollect(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)

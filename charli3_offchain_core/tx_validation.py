@@ -130,7 +130,7 @@ class TxValidator:
                 )
         else:
             self.oracle_exists = False
-            logger.warning("Could not find aggstate utxo, check oracle exists")
+            logger.warning("Could not find aggstate utxo, oracle does not exist")
 
     def _validate_oracle_inputs(self) -> None:
         self.contains_oracle_inputs = False
@@ -144,13 +144,23 @@ class TxValidator:
         if not self.contains_oracle_inputs:
             logger.warning("Transaction does not consume any up-to-date oracle inputs")
 
-    def raise_if_invalid(self, allow_own_inputs: bool) -> None:
+    def raise_if_invalid(
+        self, allow_own_inputs: bool, assume_oracle_exists: bool = True
+    ) -> None:
         """Raises TxValidationException if tx is not valid"""
         if not self.tx.valid:
             raise TxValidationException("Transaction not valid")
 
-        if not self.oracle_exists:
+        if assume_oracle_exists and not self.oracle_exists:
             raise TxValidationException("Oracle does not exist")
+        if not assume_oracle_exists and self.oracle_exists:
+            raise TxValidationException(
+                "Transaction is trying to start oracle that already exists"
+            )
+        if assume_oracle_exists and not self.contains_oracle_inputs:
+            raise TxValidationException(
+                "Transaction does not consume any up-to-date oracle inputs"
+            )
 
         if self.has_own_inputs and not allow_own_inputs:
             raise TxValidationException("Transaction contains own wallets inputs")
@@ -166,11 +176,6 @@ class TxValidator:
         if not self.all_signatories_allowed:
             raise TxValidationException(
                 "Transaction required signature outside of oracle platform"
-            )
-
-        if not self.contains_oracle_inputs:
-            raise TxValidationException(
-                "Transaction does not consume any up-to-date oracle inputs"
             )
 
     def raise_if_wrong_tx_id(self, tx_id: str) -> None:

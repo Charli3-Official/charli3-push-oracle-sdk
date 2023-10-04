@@ -12,7 +12,7 @@ from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 from charli3_offchain_core.node import Node
 
 
-@pytest.mark.order(7)
+@pytest.mark.order(8)
 class TestNodeCollect(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)
