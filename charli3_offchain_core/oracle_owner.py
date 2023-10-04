@@ -498,13 +498,15 @@ class OracleOwner:
             oracle_script = self.chainquery.get_plutus_script(self.oracle_script_hash)
 
         if plutus_script_hash(oracle_script) == self.oracle_script_hash:
-            reference_script_utxo_output = TransactionOutput(
-                address=self.oracle_addr, amount=30000000, script=oracle_script
+            # Reference script output
+            reference_script_utxo = TransactionOutput(
+                address=self.oracle_addr, amount=63000000, script=oracle_script
             )
 
             builder = TransactionBuilder(self.chainquery.context)
 
-            (builder.add_output(reference_script_utxo_output))
+            # Add reference script
+            builder.add_output(reference_script_utxo)
 
             await self.chainquery.submit_tx_builder(
                 builder, self.signing_key, self.address

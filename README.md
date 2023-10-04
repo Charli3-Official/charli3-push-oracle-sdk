@@ -41,12 +41,30 @@ Create a oracle_deploy.yml file in the root directory of the project. This file 
 
 Here is an example of what it should look like: [sample-oracle-deploy.yml](sample-oracle-deploy.yml)
 
-## Run the oracle deployment script
+## Oracle deployment CLI
+
 Finally, you can deploy the oracle by running the main script.
+
 ```bash
-python3 scripts/oracle_deploy.py
+$ python3 scripts/oracle_deploy.py --help
+Usage: oracle_deploy.py [OPTIONS] COMMAND [ARGS]...
+
+  A CLI for managing the oracle deploy.
+
+Options:
+  -p, --script-path TEXT  Optional: give path to existing precompiled oracle
+                          script
+  --help                  Show this message and exit.
+
+Commands:
+  mk-start-oracle     Make start oracle tx interactively.
+  sign-and-submit-tx  Parse, sign and submit tx interactively.
+  sign-tx             Parse tx and sign interactively.
 ```
+
 Remember to the `oracle_deploy.yml` file should be filled with your own values for the oracle. The mnemonic should be your 24-word mnemonic for your wallet, and other values should match your specific use-case and the state of the Cardano blockchain at the time of deployment.
+
+Give `--script-path` argument if the plutus script is already generated.
 
 **Note: Currently Supported Derivation Path For Mnemonic**
 
@@ -111,10 +129,17 @@ Below are the available commands:
     python scripts/oracle_owner_actions.py platform-collect
     ```
 
-6. `create-reference-script`: Creates the reference script UTxO.
+6. `create-reference-script`: Creates the reference script UTxO. Remember to pass path to an oracle script if script has no reference on blockchain already.
 
-    ```
-    python scripts/oracle_owner_actions.py create-reference-script
+    ```sh
+    python scripts/oracle_owner_actions.py create-reference-script --help
+    Usage: oracle_owner_actions.py create-reference-script [OPTIONS]
+
+      Create the reference script.
+
+    Options:
+      -p, --script-path TEXT  Path to existing precompiled oracle script
+      --help                  Show this message and exit.
     ```
 
 7. `edit-settings`: Interactively edit the oracle settings. The program will prompt you to enter the number corresponding to the setting you want to change, and then the new value for that setting. To finish and apply changes, enter 'q'.

@@ -9,7 +9,7 @@ from charli3_offchain_core.mint import Mint
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 
-@pytest.mark.order(2)
+@pytest.mark.order(3)
 class TestAddFunds(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)

@@ -7,7 +7,7 @@ from retry import retry
 from .base import TEST_RETRIES, OracleOwnerActions
 
 
-@pytest.mark.order(4)
+@pytest.mark.order(5)
 class TestAddNodes(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)

@@ -11,7 +11,7 @@ from charli3_offchain_core.datums import AggDatum, PriceRewards
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 
-@pytest.mark.order(3)
+@pytest.mark.order(4)
 class TestEditSettings(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)

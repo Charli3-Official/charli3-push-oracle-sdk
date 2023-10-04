@@ -7,7 +7,7 @@ from retry import retry
 from .base import TEST_RETRIES, OracleOwnerActions
 
 
-@pytest.mark.order(9)
+@pytest.mark.order(10)
 class TestOracleClose(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)

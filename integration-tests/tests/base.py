@@ -18,7 +18,7 @@ from pycardano import (
     IndefiniteList,
 )
 from charli3_offchain_core.datums import OracleSettings, PriceRewards, OraclePlatform
-from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
 
@@ -36,6 +36,11 @@ class TestBase:
     DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
     def setup_method(self, method):
+        # Chain query
+        self.staged_query = StagedTxSubmitter(
+            self.CHAIN_CONTEXT.blockfrost_context, self.CHAIN_CONTEXT.ogmios_context
+        )
+
         self.initialize_script_paths()
         self.initialize_payment_script()
         self.wallet_dir = "./wallets"
@@ -150,7 +155,7 @@ class TestBase:
 
     def initialize_oracle_nfts(self):
         # Initialize your oracle NFTs here
-        oracle_owner = OwnerScript(self.NETWORK, self.CHAIN_CONTEXT, None)
+        oracle_owner = OwnerScript(self.CHAIN_CONTEXT, is_mock_script=True)
         self.native_script = oracle_owner.mk_owner_script(self.script_start_slot)
 
         # Oracle's currency symbol (NFT's hash)
