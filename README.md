@@ -1,42 +1,69 @@
 # Charli3 Offchain Core
 
 This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It now leverages the charli3-offchain-core package, which contains shared code that is used across different private repositories of the Charli3 oracle network.
+
 ### Compatible charli3-oracle-prototype Branches
+
 - [main](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/main)
 
 ## Getting Started
+
 ### Prerequisites
+
 - Python 3.10
 - This project uses Poetry to manage dependencies. If you don't have Poetry installed, you can install it by following the instructions at [Poetry documentation](https://python-poetry.org/docs/).
 
 ### Installation
+
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/Charli3-Official/charli3-offchain-core.git
 ```
+
 2. Change to the repository's directory:
+
 ```bash
 cd charli3-offchain-core
 ```
+
 3. Install dependencies using Poetry:
+
 ```bash
 poetry install
 ```
+
 4. To Install the `charli3-offchain-core` package. Replace `<username>` and `<token>` with your GitHub username and a personal access token that has the `read:packages` scope:
+
 ```bash
 poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-offchain-core.git
 ```
+
 Note: This package is hosted privately on GitHub. To install it, you need to provide your GitHub username and a personal access token that has the read:packages scope.
 
 # Oracle Deployment Guide
 
 This guide walks you through the steps to deploy an oracle on the Cardano blockchain using Python.
 
-## Prepare binary file (if it is updated)
+## Docker preparations
 
-Binary executable is packed into .zip archive and stored at `binary/serialized.zip`. If the oracle validator is changed, you need to update this file: either download it from release [assets](https://github.com/Charli3-Official/charli3-oracle-prototype/releases), or manually build & pack `cabal build serialized --enable-executable-static && zip -j serialized.zip $(cabal list-bin serialized)`.
+1. [Install](https://www.docker.com/get-started/) docker
+2. The default CLI configuration will pull docker image from GitHub container registry (ghcr.io), so make sure you are logged in there.
+If you are getting errors like `Error response from daemon: denied` you should do:
+
+```sh
+docker login ghcr.io
+```
+
+You'll be prompted to enter your GitHub username and Personal Access Token (PAT) as the password.
+Make sure you have created PAT with `read:packages` permission, see more [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+
+Logout anytime if you wish `docker logout ghcr.io`.
+
+3. *For developers*. You also can build image locally and provide image name as option to CLI command.
 
 ## Create the configuration file
+
 Create a oracle_deploy.yml file in the root directory of the project. This file contains the configuration needed to deploy the oracle. Fill it with your specific values.
 
 Here is an example of what it should look like: [sample-oracle-deploy.yml](sample-oracle-deploy.yml)
@@ -46,14 +73,18 @@ Here is an example of what it should look like: [sample-oracle-deploy.yml](sampl
 Finally, you can deploy the oracle by running the main script.
 
 ```bash
-$ python3 scripts/oracle_deploy.py --help
+$ python scripts/oracle_deploy.py --help
 Usage: oracle_deploy.py [OPTIONS] COMMAND [ARGS]...
 
   A CLI for managing the oracle deploy.
 
 Options:
-  -p, --script-path TEXT  Optional: give path to existing precompiled oracle
-                          script
+  -p, --script-path TEXT  Optional arg: give path to existing precompiled
+                          oracle script
+  -l, --local-image       Optional flag: use local image instead of pulling
+                          from registry
+  -n, --image-name TEXT   Optional arg: local or remote image name
+                          [registry]/[name]:[tag]
   --help                  Show this message and exit.
 
 Commands:
@@ -71,7 +102,9 @@ Give `--script-path` argument if the plutus script is already generated.
 The backend of this application currently supports the default initial path, which is the standard path used when setting up a new wallet. The derivation path "m/1852'/1815'/0'/0/0" is employed to generate the necessary keys and addresses.
 
 # Oracle Owner CLI
+
 This repository provides a command line interface (CLI) for managing oracle owner actions.
+
 ``` bash
 $ python3 scripts/oracle_owner_actions.py --help
 Usage: oracle_owner_actions.py [OPTIONS] COMMAND [ARGS]...
@@ -92,7 +125,9 @@ Commands:
   sign-and-submit-tx       Parse, sign and submit tx interactively.
   sign-tx                  Parse tx and sign interactively.
 ```
+
 ## How to Use
+
 The CLI is built with Python and uses Click library to manage the commands.
 
 You can use the CLI to perform actions like adding nodes, removing nodes, adding funds, and editing settings of the oracle.
@@ -106,17 +141,21 @@ Below are the available commands:
     ```bash
     python scripts/oracle_owner_actions.py add-nodes
     ```
+
 2. `remove-nodes`: Interactively removes nodes from the oracle. The program will prompt you to enter nodes. To quit, enter 'q'.
 
     Limitation : Make sure Wallet doesn't have C3 tokens or spceifically tx doesn't output C3 tokens while building, The validator checks for payment tokens (C3) Output and if it's more than the node rewards amount it will fail.
+
     ```
     python scripts/oracle_owner_actions.py remove-nodes
     ```
+
 3. `add-funds`: Adds funds to the oracle with Integer Arg.
 
     ```
     python scripts/oracle_owner_actions.py add-funds 500
     ```
+
 4. `oracle-close`: Closes the oracle.
 
     ```
@@ -155,18 +194,23 @@ Below are the available commands:
 # Run Nodes Simulator
 
 ## Setup & Execution
+
 1. Before running the CLI, you will need to set up your configuration in the [run-node-simulator.yml](sample-run-node-simulator.yml) file.
 2. Update the updates list in the yaml with your own mnemonic phrases and update values.
 3. Run the script by typing
+
    ```
     python scripts/run_simulation.py
     ```
+
 4. The script will print the public key hash of each node it creates, perform the updates for each node, aggregate the oracle with last node, and collect reward for each node with a 20-second delay between each collection.
 
 # Run Integration Tests
 
 ## Setup & Execution
+
 The integration tests are executed using [plutip](https://github.com/mlabs-haskell/plutip/tree/master), the [local cluster](https://github.com/mlabs-haskell/plutip/blob/master/local-cluster/README.md) of nodes.
+
    ```
 run: nix develop -c env -C integration-tests ./run_integration_tests.sh
     ```
@@ -201,24 +245,31 @@ The `charli3-offchain-core` package uses Poetry for dependency management and bu
 ```bash
 cd charli3-offchain-core
 ```
+
 2. To build the package, run:
+
 ```bash
 poetry build
 ```
+
 This will generate a .tar.gz and a .whl file in the dist/ directory, which can be distributed and installed.
 
 ## Importing the Package into Other Repositories
+
 To import the charli3-offchain-core package into other repositories:
 
 1. Navigate to the root directory of the other repository.
 2. Make sure Poetry is installed in the current environment. If not, follow the installation guide in the [Prerequisites](#prerequisites) section.
 3. Add the `charli3-offchain-core` package using Poetry. Replace `<username>` and `<token>` with your GitHub username and a personal access token that has the `read:packages` scope:
+
 ```bash
 poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-offchain-core.git
 ```
+
 4. After successful installation, you can import the package into your Python files like any other Python package. For example:
+
 ```python
 from charli3_offchain_core import mint, datums, redeemers, node
 ```
-Remember to replace `<username>` and `<token>` with your actual GitHub username and token.
 
+Remember to replace `<username>` and `<token>` with your actual GitHub username and token.
