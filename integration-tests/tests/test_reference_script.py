@@ -1,4 +1,5 @@
 import pytest
+import os
 
 import asyncio
 from retry import retry
@@ -12,7 +13,8 @@ class TestCreateReferenceScript(OracleOwnerActions):
     def setup_method(self, method):
         super().setup_method(method)
 
-        self.oracle_script = load_plutus_script("binary/OracleV3.plutus")
+        script_path = os.path.join(self.DIR_PATH, "..", "..", "tmp", "OracleV3.plutus")
+        self.oracle_script = load_plutus_script(script_path)
 
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     @pytest.mark.asyncio

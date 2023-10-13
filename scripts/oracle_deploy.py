@@ -46,13 +46,24 @@ logger = logging.getLogger("oracle_deploy")
 @click.option(
     "-p",
     "--script-path",
-    help="Optional: give path to existing precompiled oracle script",
+    help="Optional arg: give path to existing precompiled oracle script",
 )
-def cli(ctx, script_path):
+@click.option(
+    "-l",
+    "--local-image",
+    is_flag=True,
+    help="Optional flag: use local image instead of pulling from registry",
+)
+@click.option(
+    "-n",
+    "--image-name",
+    help="Optional arg: local or remote image name [registry]/[name]:[tag]",
+)
+def cli(ctx, script_path, local_image, image_name):
     """A CLI for managing the oracle deploy."""
     ctx.ensure_object(dict)  # Initialize the context object if not already present
     if "oracle_start" not in ctx.obj:
-        setup(ctx, "oracle_deploy.yml", script_path)
+        setup(ctx, "oracle_deploy.yml", script_path, local_image, image_name)
 
 
 def generate_validator_arguments(file_name, arguments):
@@ -74,23 +85,22 @@ def generate_validator_arguments(file_name, arguments):
         )
 
 
-def unzip_and_execute_binary(
-    file_name,
-    unzip_dir,
-    binary_name,
+def execute_binary_from_image(
+    artifacts_dir,
     oracle_mp,
     payment_mp,
     payment_tn,
     rate_tn=None,
     rate_mp=None,
+    docker_image=None,
+    pull_image=True,
     args=None,
 ) -> PlutusV2Script:
-    """Unzip the binary file and execute it and return the Plutus script"""
-    work_dir = os.path.join(os.getcwd(), unzip_dir)
-
-    # Unzip the file
-    with zipfile.ZipFile(file_name, "r") as zip_ref:
-        zip_ref.extractall(work_dir)
+    """Pull and execute docker image with binary file returning the Plutus script"""
+    argument_filename = "validator-argument.yml"
+    script_filename = "OracleV3.plutus"
+    if docker_image is None:
+        docker_image = "ghcr.io/charli3-official/serialized:latest"
 
     # Generate the YAML file
     validator_arguments = {
@@ -104,37 +114,47 @@ def unzip_and_execute_binary(
         "rate_tn": rate_tn,
         "rate_mp": rate_mp,
     }
-    validator_arg_path = os.path.join(work_dir, "validator-argument.yml")
+    validator_arg_path = os.path.join(artifacts_dir, argument_filename)
     generate_validator_arguments(validator_arg_path, validator_arguments)
 
-    # Make the binary executable
-    binary_file_path = os.path.join(work_dir, binary_name)
-    os.chmod(binary_file_path, 0o755)
+    # Pull docker image
+    if pull_image:
+        pull_docker_image = ["docker", "pull", docker_image]
+        with subprocess.Popen(pull_docker_image) as process:
+            output, error = process.communicate()
+            # If you want to print the output
+            if output:
+                print(f"{pull_docker_image} output: ", output)
+            if error:
+                print(f"{pull_docker_image} error: ", error)
 
-    # Prepare the command and arguments
-    script_path = os.path.join(work_dir, "OracleV3.plutus")
-    command = [binary_file_path]
+    # Run docker image
+    run_docker_image = [
+        "docker",
+        "run",
+        "-v",
+        f"{artifacts_dir}:/mnt",
+        docker_image,
+        "/app/serialized",
+    ]
+    run_docker_image.extend(["--argument-path", f"/mnt/{argument_filename}"])
+    run_docker_image.extend(["--script-path", f"/mnt/{script_filename}"])
     if args:
-        command.extend(["--argument-path", validator_arg_path])
-        command.extend(["--script-path", script_path])
-        command.extend(args)
+        run_docker_image.extend(args)
+    with subprocess.Popen(run_docker_image) as process:
+        output, error = process.communicate()
+        # If you want to print the output
+        if output:
+            print(f"{run_docker_image} output: ", output)
+        if error:
+            print(f"{run_docker_image} error: ", error)
 
-    # Execute the binary
-    process = subprocess.Popen(command)
-    output, error = process.communicate()
-
-    # If you want to print the output
-    if output:
-        print("Output: ", output)
-
-    if error:
-        print("Error: ", error)
-
+    script_path = os.path.join(artifacts_dir, script_filename)
     plutus_script = load_plutus_script(script_path)
     return plutus_script
 
 
-def setup(ctx, config_file, script_path):
+def setup(ctx, config_file, script_path, is_local_image, image_name):
     """Setup the oracle owner actions."""
     # Load configuration from YAML file
     with open(config_file, "r") as ymlfile:
@@ -205,15 +225,15 @@ def setup(ctx, config_file, script_path):
     if script_path:
         oracle_script = load_plutus_script(script_path)
     else:
-        oracle_script = unzip_and_execute_binary(
-            file_name="binary/serialized.zip",
-            unzip_dir="tmp",
-            binary_name="serialized",
+        oracle_script = execute_binary_from_image(
+            artifacts_dir=os.path.join(os.getcwd(), "tmp"),
             oracle_mp=native_script.hash(),
             payment_mp=c3_token_hash,
             payment_tn=config["c3_token_name"],
             rate_tn=c3_oracle_rate_token_name,
             rate_mp=c3_oracle_rate_token_hash,
+            docker_image=image_name,
+            pull_image=not is_local_image,
             args=["-a", "-v"],
         )
 

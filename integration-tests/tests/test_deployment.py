@@ -17,7 +17,7 @@ from .base import TEST_RETRIES, TestBase
 from charli3_offchain_core.oracle_start import OracleStart
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 from charli3_offchain_core.mint import Mint
-from scripts.oracle_deploy import unzip_and_execute_binary
+from scripts.oracle_deploy import execute_binary_from_image
 
 
 @pytest.mark.order(1)
@@ -39,10 +39,8 @@ class TestDeployment(TestBase):
         await self.tC3.mint_nft_with_script()
 
         # Oracle contract script
-        oracle_plutus_script_v2 = unzip_and_execute_binary(
-            file_name=self.serialized_path,
-            unzip_dir="binary",
-            binary_name="serialized",
+        oracle_plutus_script_v2 = execute_binary_from_image(
+            artifacts_dir=os.path.join(self.DIR_PATH, "..", "..", "tmp"),
             oracle_mp=self.owner_script_hash,
             payment_mp=self.payment_script_hash,
             payment_tn="Charli3",
