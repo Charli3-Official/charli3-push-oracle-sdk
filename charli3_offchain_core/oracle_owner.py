@@ -1,6 +1,6 @@
 """Oracle Owner contract transactions class"""
 from copy import deepcopy
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Literal
 from pycardano import (
     Network,
     PaymentSigningKey,
@@ -413,16 +413,20 @@ class OracleOwner:
             logger.error("No platform reward available to collect for owner.")
 
     async def mk_oracle_close_tx(
-        self, platform_multisig_pkhs: List[str]
+        self,
+        platform_multisig_pkhs: List[str],
+        withdrawal_addr: Address,
+        disbursementChoice: Literal["TO_NODES", "TO_ONE_ADDRESS"],
     ) -> Transaction:
         """remove all oralce utxos from oracle script."""
 
         oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
-        aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)[0]
-        oraclefeed_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.oracle_nft)[0]
-        reward_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.reward_nft)[0]
-
         node_utxos: List[UTxO] = filter_utxos_by_asset(oracle_utxos, self.node_nft)
+
+        oraclefeed_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.oracle_nft)[0]
+        aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)[0]
+
+        reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
 
         if oraclefeed_utxo and aggstate_utxo and reward_utxo:
             # prepare datums, redeemers and new node utxos for eligible nodes
@@ -470,13 +474,74 @@ class OracleOwner:
             builder.mint = oracle_nfts
 
             # finding node utxos for oracle_close
-            # TO DO :: transfer c3 tokens to respective node operator address
             for node in node_utxos:
                 builder.add_script_input(
                     node,
                     script=self.script_utxo,
                     redeemer=deepcopy(oracle_close_redeemer),
                 )
+
+            def get_c3_amount(utxo):
+                multi_asset = utxo.output.amount.multi_asset
+                return multi_asset.get(self.c3_token_hash, {}).get(
+                    self.c3_token_name, 0
+                )
+
+            if disbursementChoice == "TO_NODES":
+                # Distribute unclaimed C3 tokens to each node operator
+                for reward_info in reward_datum.reward_state.node_reward_list:
+                    reward_pkh = VerificationKeyHash(reward_info.reward_address)
+
+                    reward_node_address = Address(
+                        payment_part=reward_pkh, network=self.network
+                    )
+
+                    c3_node_amount = reward_info.reward_amount
+
+                    # Remove nodes with 0 rewards
+                    if c3_node_amount > 0:
+                        c3_asset = MultiAsset(
+                            {
+                                self.c3_token_hash: Asset(
+                                    {self.c3_token_name: c3_node_amount}
+                                )
+                            }
+                        )
+                        builder.add_output(
+                            TransactionOutput(
+                                reward_node_address, Value(2000000, c3_asset)
+                            )
+                        )
+
+                platform_reward = reward_datum.reward_state.platform_reward
+
+                c3_undistributed_amount = (
+                    get_c3_amount(aggstate_utxo)
+                    + get_c3_amount(oraclefeed_utxo)
+                    + platform_reward
+                )
+            else:
+                c3_undistributed_amount = (
+                    get_c3_amount(aggstate_utxo)
+                    + get_c3_amount(reward_utxo)
+                    + get_c3_amount(oraclefeed_utxo)
+                )
+
+            # C3 Asset
+            c3_undistributed_asset = MultiAsset(
+                {
+                    self.c3_token_hash: Asset(
+                        {self.c3_token_name: c3_undistributed_amount}
+                    )
+                }
+            )
+            # Create an output transaction for the undistributed C3 tokens
+            output = TransactionOutput(
+                address=withdrawal_addr, amount=Value(2000000, c3_undistributed_asset)
+            )
+
+            # Add the output to the transaction builder
+            builder.add_output(output)
 
             platform_multisig_vkhs = list(
                 map(VerificationKeyHash.from_primitive, platform_multisig_pkhs)
@@ -500,7 +565,7 @@ class OracleOwner:
         if plutus_script_hash(oracle_script) == self.oracle_script_hash:
             # Reference script output
             reference_script_utxo = TransactionOutput(
-                address=self.oracle_addr, amount=63000000, script=oracle_script
+                address=self.oracle_addr, amount=64000000, script=oracle_script
             )
 
             builder = TransactionBuilder(self.chainquery.context)

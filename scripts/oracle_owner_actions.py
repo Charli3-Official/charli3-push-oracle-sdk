@@ -1,5 +1,5 @@
 """A CLI for managing the oracle owner actions."""
-from typing import Tuple
+from typing import Tuple, Literal
 import asyncio
 import click
 import yaml
@@ -194,8 +194,22 @@ def mk_oracle_close(ctx):
     """Make tx for closing the oracle."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
     platform_pkhs = collect_multisig_pkhs()
-    if platform_pkhs:
-        tx = asyncio.run(oracle_owner.mk_oracle_close_tx(platform_pkhs))
+    raw_addr = click.prompt("Enter the withdrawal address for the C3 tokens")
+    disbursementChoice = click.prompt(
+        "Select an option:\n"
+        "TO_NODES: Pay unclaimed C3 tokens to node operators and collect the network remainder\n"
+        "TO_ONE_ADDRESS: Collect all C3 tokens in the network, including unclaimed C3 tokens\n"
+        "Option",
+        default="TO_NODES",
+        show_default=True,
+    )
+    withdrawal_addr = Address.from_primitive(raw_addr)
+    if platform_pkhs and disbursementChoice in ["TO_NODES", "TO_ONE_ADDRESS"]:
+        tx = asyncio.run(
+            oracle_owner.mk_oracle_close_tx(
+                platform_pkhs, withdrawal_addr, disbursementChoice
+            )
+        )
         logger.info(f"Created oracle close tx id: {tx.id}")
         write_tx_to_file("oracle_close.cbor", tx)
 
