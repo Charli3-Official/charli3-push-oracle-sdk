@@ -16,7 +16,11 @@ class TestOracleClose(OracleOwnerActions):
     @pytest.mark.asyncio
     async def test_oracle_close(self):
         platform_pkhs = [self.oracle_owner.pub_key_hash.payload.hex()]
-        tx = await self.oracle_owner.mk_oracle_close_tx(platform_pkhs)
+
+        # Oracle close distribuiting unclaimed C3 tokens to each node
+        tx = await self.oracle_owner.mk_oracle_close_tx(
+            platform_pkhs, self.oracle_owner.address, "TO_NODES"
+        )
         await self.oracle_owner.staged_query.sign_and_submit_tx(
             tx, self.oracle_owner.signing_key
         )

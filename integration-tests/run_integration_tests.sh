@@ -112,7 +112,11 @@ run_test "TestCreateReferenceScript"
 # The delay ensures any side effects from previous runs are cleared up
 run_test_multiple_times "TestAggregate" 2 3m
 
-run_test "TestAddFunds or TestEditSettings or TestAddNodes or TestRemoveNodes or TestNodeCollect or TestPlatformCollect or TestOracleClose"
+run_test "TestAddFunds or TestEditSettings or TestAddNodes or TestRemoveNodes or TestNodeCollect or TestPlatformCollect"
+
+run_test_multiple_times "TestAggregate" 1 3m
+
+run_test "TestOracleClose"
 
 # For aggregation-tx
 # poetry run pytest tests -v -k "TestDeployment or TestAggregate"

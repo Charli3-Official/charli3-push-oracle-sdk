@@ -211,9 +211,9 @@ Below are the available commands:
 
 The integration tests are executed using [plutip](https://github.com/mlabs-haskell/plutip/tree/master), the [local cluster](https://github.com/mlabs-haskell/plutip/blob/master/local-cluster/README.md) of nodes.
 
-   ```
+```
 run: nix develop -c env -C integration-tests ./run_integration_tests.sh
-    ```
+```
 The script generates a local node, which will be utilized by both the Ogmios and Kupo services.
 **Note**: Whenever modifications are applied to the contract `cborHex` file, ensure to  update the corresponding contract address inside the `integration-test/configuration.yml` file.
 
