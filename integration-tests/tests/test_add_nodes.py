@@ -4,7 +4,8 @@ import asyncio
 
 from retry import retry
 
-from .base import TEST_RETRIES, OracleOwnerActions
+from .base import TEST_RETRIES
+from .owner_actions import OracleOwnerActions
 
 
 @pytest.mark.order(5)

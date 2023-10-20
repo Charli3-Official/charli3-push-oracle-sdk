@@ -6,13 +6,13 @@ from retry import retry
 from typing import List
 from pycardano import UTxO
 
-from .base import TEST_RETRIES, OracleOwnerActions
+from .base import TEST_RETRIES
+from .owner_actions import OracleOwnerActions
 from charli3_offchain_core.datums import OracleDatum, NodeDatum
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 from charli3_offchain_core.node import Node
 
 
-### TODO fix non deterministic test
 @pytest.mark.order(7)
 class TestAggregate(OracleOwnerActions):
     def setup_method(self, method):

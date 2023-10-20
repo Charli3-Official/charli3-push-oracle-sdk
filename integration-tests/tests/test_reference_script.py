@@ -4,7 +4,9 @@ import os
 import asyncio
 from retry import retry
 
-from .base import TEST_RETRIES, OracleOwnerActions
+from .base import TEST_RETRIES
+from .owner_actions import OracleOwnerActions
+
 from scripts.cli_common import load_plutus_script
 
 

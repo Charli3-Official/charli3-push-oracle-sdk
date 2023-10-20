@@ -1,7 +1,6 @@
 import pytest
-import asyncio
 import os
-import cbor2
+import yaml
 
 from retry import retry
 from pycardano import (
@@ -34,7 +33,22 @@ class TestDeployment(TestBase):
             self.payment_script,
         )
 
+    def update_oracle_address(self, new_address):
+        # Update the configuration file with the new contract address
+        config_path = os.path.join(self.DIR_PATH, "../configuration.yml")
+        with open(config_path, "r") as file:
+            # Load the YAML data from the file
+            config = yaml.safe_load(file)
+
+        # Update the oracle_script_address
+        config["oracle_script_address"] = new_address
+
+        # Write the updated data back to the file
+        with open(config_path, "w") as file:
+            yaml.safe_dump(config, file)
+
     @pytest.mark.asyncio
+    @pytest.mark.order(1)
     async def test_oracle_deploy(self):
         await self.tC3.mint_nft_with_script()
 
@@ -60,6 +74,10 @@ class TestDeployment(TestBase):
 
         # Contract address
         oracle_script_address = Address(payment_part=script_hash, network=self.NETWORK)
+
+        # Update the configuration file with the created Oracle script address.
+        self.update_oracle_address(str(oracle_script_address))
+
         print("Charli3's oracle contract address: ", oracle_script_address)
 
         deployment = OracleStart(
@@ -80,11 +98,15 @@ class TestDeployment(TestBase):
         tx = await deployment.mk_start_oracle_tx(platform_pkhs, self.tC3_initial_amount)
         await self.staged_query.sign_and_submit_tx(tx, self.owner_signing_key)
 
-        assert self.oracle_addr == oracle_script_address, (
+        # Retrieve the contract address from the configuration file.
+        oracle_addr = self.load_oracle_address()
+
+        assert oracle_addr == oracle_script_address, (
             f"Unexpected contract address: {oracle_script_address} "
-            f"Expected: {self.oracle_addr}"
+            f"Expected: {oracle_addr}"
         )
 
+    @pytest.mark.order(2)
     def test_oraclefeed_nft_existence(self):
         # Expected oracle feed NFT
         oracle_nft = MultiAsset.from_primitive(
@@ -92,24 +114,39 @@ class TestDeployment(TestBase):
         )
         oracle_datum = RawCBOR(cbor=b"\xd8y\x80")
 
+        # Retrieve the contract address from the configuration file.
+        oracle_addr = self.load_oracle_address()
+
         # Expected Oracle's Feed UTXO
         expected_oracle_feed_output = TransactionOutput(
-            self.oracle_addr,
+            oracle_addr,
             Value(2000000, oracle_nft),
             datum=oracle_datum,
         )
-        self.assert_output(self.oracle_addr, expected_oracle_feed_output)
+        self.assert_output(oracle_addr, expected_oracle_feed_output)
 
+    @pytest.mark.order(3)
     def test_number_of_existing_node_utxos(self):
-        total_nodes = self.get_total_nodes(self.oracle_addr)
+        # Retrieve the contract address from the configuration file.
+        oracle_addr = self.load_oracle_address()
+
+        total_nodes = self.get_total_nodes(oracle_addr)
         assert total_nodes == 3, f"Expected 3 Nodes, received {total_nodes}"
 
+    @pytest.mark.order(4)
     def test_aggstate_nft_existence(self):
-        oracle_utxos = self.CHAIN_CONTEXT.context.utxos(self.oracle_addr)
+        # Retrieve the contract address from the configuration file.
+        oracle_addr = self.load_oracle_address()
+
+        oracle_utxos = self.CHAIN_CONTEXT.context.utxos(oracle_addr)
         aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)
         assert aggstate_utxo != [], "AggState UTxO not found"
 
+    @pytest.mark.order(5)
     def test_reward_nft_existence(self):
-        oracle_utxos = self.CHAIN_CONTEXT.context.utxos(self.oracle_addr)
+        # Retrieve the contract address from the configuration file.
+        oracle_addr = self.load_oracle_address()
+
+        oracle_utxos = self.CHAIN_CONTEXT.context.utxos(oracle_addr)
         reward_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.reward_nft)
         assert reward_utxo != [], "Reward UTxO not found"

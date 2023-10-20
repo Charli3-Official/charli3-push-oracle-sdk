@@ -6,8 +6,9 @@ from retry import retry
 
 from pycardano import UTxO
 
-from .base import TEST_RETRIES, OracleOwnerActions
-from charli3_offchain_core.datums import OracleDatum, RewardDatum
+from .base import TEST_RETRIES
+from .owner_actions import OracleOwnerActions
+from charli3_offchain_core.datums import RewardDatum
 from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 from charli3_offchain_core.node import Node
 
