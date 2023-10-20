@@ -1,12 +1,11 @@
 import pytest
 
 import asyncio
-from pycardano import Address, UTxO
 from retry import retry
 
-from .base import TEST_RETRIES, OracleOwnerActions
+from .base import TEST_RETRIES
+from .owner_actions import OracleOwnerActions
 from charli3_offchain_core.mint import Mint
-from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 
 @pytest.mark.order(3)

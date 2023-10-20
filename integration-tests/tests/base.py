@@ -19,7 +19,6 @@ from pycardano import (
 )
 from charli3_offchain_core.datums import OracleSettings, PriceRewards, OraclePlatform
 from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
-from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
 
 TEST_RETRIES = 6
@@ -54,9 +53,6 @@ class TestBase:
         self.tC3_initial_amount = self.config["oracle_owner"]["tC3_initial_amount"]
         self.tC3_add_funds = self.config["oracle_owner"]["tC3_add_funds"]
         self.updated_config = self.config["updated_oracle_settings"]
-        self.oracle_addr = Address.from_primitive(
-            str(self.config["oracle_info"]["oracle_script_address"])
-        )
         self.nodes_values = self.config["nodes_values"]
         self.initialize_oracle_nfts()
 
@@ -113,6 +109,13 @@ class TestBase:
         config_path = os.path.join(self.DIR_PATH, "../configuration.yml")
         with open(config_path) as stream:
             self.config = yaml.safe_load(stream)
+
+    # Load the contract address from the configuration filie
+    def load_oracle_address(self):
+        config_path = os.path.join(self.DIR_PATH, "../configuration.yml")
+        with open(config_path) as stream:
+            self.config = yaml.safe_load(stream)
+        return Address.from_primitive(str(self.config["oracle_script_address"]))
 
     # Oracle Settings (AggState UTxO's Datum)
     def initialize_oracle_settings(self):
@@ -245,26 +248,3 @@ class TestBase:
     @retry(tries=TEST_RETRIES, delay=4)
     def check_chain_context(self):
         print(f"Current chain tip: {self.CHAIN_CONTEXT.ogmios_context.last_block_slot}")
-
-
-class OracleOwnerActions(TestBase):
-    def setup_method(self, method):
-        super().setup_method(method)
-
-        self.oracle_owner = OracleOwner(
-            network=self.NETWORK,
-            chainquery=self.CHAIN_CONTEXT,
-            signing_key=self.platform_signing_key,
-            verification_key=self.platform_verification_key,
-            node_nft=self.single_node_nft,
-            aggstate_nft=self.aggstate_nft,
-            oracle_nft=self.oracle_feed_nft,
-            reward_nft=self.reward_nft,
-            minting_nft_hash=self.owner_script_hash,
-            c3_token_hash=self.payment_script_hash,
-            c3_token_name=self.tC3_token_name,
-            oracle_addr=str(self.oracle_addr),
-            stake_key=None,
-            minting_script=self.native_script,
-            validity_start=self.script_start_slot,
-        )
