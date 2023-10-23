@@ -118,6 +118,11 @@ run_test_multiple_times "TestAggregate" 1 3m
 
 run_test "TestOracleClose"
 
+# Execute multisig tests
+run_test "TestMultisigDeployment"
+run_test "TestMultisigReferenceScript"
+run_test "TestMultisigRemoveNodes"
+
 # For aggregation-tx
 # poetry run pytest tests -v -k "TestDeployment or TestAggregate"
 
