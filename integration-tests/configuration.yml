@@ -4,7 +4,8 @@ oracle_owner:
   tC3_add_funds: 1000000000
 
 oracle_info:
-  oracle_script_address: addr1wy35d079t453ns33mgq499l2w9smls5qcrczyual2mj7zxgt3de2y
+  oracle_script_address: addr1wyfr2jmffrh72sw0crex29hprvu0guf4xcgkkdwsp7266qqv2e3uj
+  multisig_oracle_script_address: addr1wyfe0hd5tyla99dye7z6vhjrq0wt3zgvea6rg3t3ua72syc0dmg72
 
 oracle_settings:
   os_updated_nodes: 10000

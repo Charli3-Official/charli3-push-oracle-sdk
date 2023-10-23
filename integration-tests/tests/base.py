@@ -111,14 +111,23 @@ class TestBase:
             self.config = yaml.safe_load(stream)
 
     # Load the contract address from the configuration filie
-    def load_oracle_address(self):
+    def load_oracle_address(self, name=None):
+        if name is None:
+            name = "oracle_script_address"
         config_path = os.path.join(self.DIR_PATH, "../configuration.yml")
         with open(config_path) as stream:
             self.config = yaml.safe_load(stream)
-        return Address.from_primitive(str(self.config["oracle_script_address"]))
+        return Address.from_primitive(str(self.config[name]))
 
     # Oracle Settings (AggState UTxO's Datum)
-    def initialize_oracle_settings(self):
+    def initialize_oracle_settings(self, platform=None):
+        if platform is None:
+            platform = OraclePlatform(
+                pmultisig_pkhs=IndefiniteList([self.platform_pkh]),
+                pmultisig_threshold=self.config["oracle_settings"]["os_platform"][
+                    "pmultisig_threshold"
+                ],
+            )
         self.agSettings = OracleSettings(
             os_node_list=[
                 self.node_1_pkh,
@@ -148,12 +157,7 @@ class TestBase:
             ),
             os_iqr_multiplier=self.config["oracle_settings"]["os_iqr_multiplier"],
             os_divergence=self.config["oracle_settings"]["os_divergence"],
-            os_platform=OraclePlatform(
-                pmultisig_pkhs=IndefiniteList([self.platform_pkh]),
-                pmultisig_threshold=self.config["oracle_settings"]["os_platform"][
-                    "pmultisig_threshold"
-                ],
-            ),
+            os_platform=platform,
         )
 
     def initialize_oracle_nfts(self):
@@ -248,3 +252,56 @@ class TestBase:
     @retry(tries=TEST_RETRIES, delay=4)
     def check_chain_context(self):
         print(f"Current chain tip: {self.CHAIN_CONTEXT.ogmios_context.last_block_slot}")
+
+
+class MultisigTestBase(TestBase):
+    def setup_method(self, method):
+        super().setup_method(method)
+
+        self.oracle_addr = Address.from_primitive(
+            str(self.config["oracle_info"]["multisig_oracle_script_address"])
+        )
+
+    def initialize_oracle_nfts(self):
+        # Initialize your oracle NFTs here
+        parties = [
+            self.owner_verification_key.hash(),
+            self.platform_verification_key.hash(),
+        ]
+        oracle_owner = OwnerScript(
+            self.CHAIN_CONTEXT, multisig_parties=parties, multisig_threshold=2
+        )
+        self.native_script = oracle_owner.mk_owner_script(self.script_start_slot)
+
+        # Oracle's currency symbol (NFT's hash)
+        self.owner_script_hash = self.native_script.hash()
+
+        # Oracle's NFTs
+        self.oracle_feed_nft = MultiAsset.from_primitive(
+            {self.owner_script_hash.payload: {b"OracleFeed": 1}}
+        )
+        self.single_node_nft = MultiAsset.from_primitive(
+            {self.owner_script_hash.payload: {b"NodeFeed": 1}}
+        )
+        self.aggstate_nft = MultiAsset.from_primitive(
+            {self.owner_script_hash.payload: {b"AggState": 1}}
+        )
+        self.reward_nft = MultiAsset.from_primitive(
+            {self.owner_script_hash.payload: {b"Reward": 1}}
+        )
+
+    def initialize_oracle_settings(self):
+        platform = OraclePlatform(
+            pmultisig_pkhs=IndefiniteList(
+                [
+                    self.owner_verification_key.hash().payload,
+                    self.platform_verification_key.hash().payload,
+                ]
+            ),
+            pmultisig_threshold=2,
+        )
+        super().initialize_oracle_settings(platform)
+
+    def load_oracle_address(self):
+        addr = super().load_oracle_address(name="multisig_oracle_script_address")
+        return addr

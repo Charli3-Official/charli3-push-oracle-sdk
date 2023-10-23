@@ -301,7 +301,7 @@ def mk_edit_settings(ctx):
 
     if changes_made and platform_pkhs:
         tx = asyncio.run(oracle_owner.mk_edit_settings_tx(platform_pkhs, ag_settings))
-        logger.info(f"Created platform collect tx id: {tx.id}")
+        logger.info(f"Created edit settings tx id: {tx.id}")
         write_tx_to_file("edit_settings.cbor", tx)
     else:
         click.echo("No changes were made.")

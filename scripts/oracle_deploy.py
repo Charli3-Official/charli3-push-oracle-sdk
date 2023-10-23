@@ -93,12 +93,16 @@ def execute_binary_from_image(
     rate_tn=None,
     rate_mp=None,
     docker_image=None,
+    argument_filename=None,
+    script_filename=None,
     pull_image=True,
     args=None,
 ) -> PlutusV2Script:
     """Pull and execute docker image with binary file returning the Plutus script"""
-    argument_filename = "validator-argument.yml"
-    script_filename = "OracleV3.plutus"
+    if argument_filename is None:
+        argument_filename = "validator-argument.yml"
+    if script_filename is None:
+        script_filename = "OracleV3.plutus"
     if docker_image is None:
         docker_image = "ghcr.io/charli3-official/serialized:latest"
 
