@@ -559,13 +559,18 @@ class OracleOwner:
     async def create_reference_script(self, oracle_script: PlutusV2Script = None):
         """build's partial reference script tx."""
 
+        # The ADA amount required to cover the creation of the reference script.
+        script_transaction_fee_amount = 64000000
+
         if not oracle_script:
             oracle_script = self.chainquery.get_plutus_script(self.oracle_script_hash)
 
         if plutus_script_hash(oracle_script) == self.oracle_script_hash:
             # Reference script output
             reference_script_utxo = TransactionOutput(
-                address=self.oracle_addr, amount=64000000, script=oracle_script
+                address=self.oracle_addr,
+                amount=script_transaction_fee_amount,
+                script=oracle_script,
             )
 
             builder = TransactionBuilder(self.chainquery.context)

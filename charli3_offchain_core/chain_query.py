@@ -153,6 +153,7 @@ class ChainQuery:
         builder: TransactionBuilder,
         address: Address,
         signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+        user_defined_expenses: int = 0,
     ) -> TransactionBuilder:
         """process common inputs for transaction builder
 
@@ -160,24 +161,42 @@ class ChainQuery:
             builder (TransactionBuilder): transaction builder
             address (Address): address belonging to signing_key, used for balancing, collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
+            user_defined_expenses (int): Quantity to cover transaction fees and collateral
+        (Default is 0 if not provided, as it will automatically obtain input UTxOs.)
 
         Returns:
             TransactionBuilder: transaction builder
         """
+
         # Add input address for tx balancing,
-        # this could include any address utxos and spend them for tx fees
-        builder.add_input_address(address)
-
-        # Fresh output for convenience of using for collateral in future
-        builder.add_output(TransactionOutput(address, 5000000))
-
-        non_nft_utxo = await self.get_or_create_collateral(address, signing_key)
-
-        if non_nft_utxo is not None:
-            builder.collaterals.append(non_nft_utxo)
+        if user_defined_expenses != 0:
+            # Include an input UTXO that exclusively contains ADA (tx fees).
+            utxo_for_tx_fees = await self.utxo_for_tx_fees(
+                address, signing_key, user_defined_expenses
+            )
+            builder.add_input(utxo_for_tx_fees)
             builder.required_signers = [address.payment_part]
-
             return builder
+        else:
+            # this could include any address utxos and spend them for tx fees
+            builder.add_input_address(address)
+
+            # Fresh output for convenience of using for collateral in future
+            # **NOTE** This value should align with the user_defined_expenses in the
+            # aggregation transaction, as the node executes the aggregation, so the
+            # value should cover both collateral and transaction fees.
+            # Under normal circumstances, the node updates its value and creates
+            # the output  for covering the aggregation, taking advantage of its
+            # low memory consumption.
+            builder.add_output(TransactionOutput(address, 9000000))
+
+            non_nft_utxo = await self.get_or_create_collateral(address, signing_key)
+
+            if non_nft_utxo is not None:
+                builder.collaterals.append(non_nft_utxo)
+                builder.required_signers = [address.payment_part]
+
+                return builder
 
         raise CollateralException("Unable to find or create collateral.")
 
@@ -185,6 +204,7 @@ class ChainQuery:
         self,
         address: Address,
         signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+        collateral_amount: int = 9000000,
     ) -> UTxO:
         """get or create collateral
         Args:
@@ -193,28 +213,107 @@ class ChainQuery:
         Returns:
             UTxO: utxo
         """
-        non_nft_utxo = await self.find_collateral(address)
+        non_nft_utxo = await self.find_collateral(address, collateral_amount)
 
         if non_nft_utxo is None:
-            await self.create_collateral(address, signing_key)
-            non_nft_utxo = await self.find_collateral(address)
+            await self.create_collateral(address, signing_key, collateral_amount)
+            non_nft_utxo = await self.find_collateral(address, collateral_amount)
 
         return non_nft_utxo
+
+    async def utxo_for_tx_fees(
+        self,
+        address: Address,
+        signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
+        required_amount: int,
+    ) -> UTxO:
+        """get or create utxo for covert blockchain transaction fees
+        Args:
+            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
+            required_amount (int): required amoutn to cover transaction fees.
+        Returns:
+            UTxO: utxo
+        """
+        non_nft_utxo = await self.find_collateral(address, required_amount)
+
+        if non_nft_utxo is None:
+            # We reuse the create_collater because it has the same principle
+            await self.create_collateral(address, signing_key, required_amount)
+            non_nft_utxo = await self.find_collateral(address, required_amount)
+
+        return non_nft_utxo
+
+    async def find_collateral(
+        self, target_address: Union[str, Address], required_amount: int
+    ) -> UTxO:
+        """
+        This method finds an UTxO  for the given address with the
+        following requirements:
+        - required_amount - 1 <= required_amunt < required_amount + 1.
+        - no multi asset
+        Args:
+            target_address (str, Address): The address to find the collateral for.
+
+        Returns:
+            UTxO: The  utxo covering the fees if found, None otherwise.
+
+        Note: When used to locate the UTXO for covering expenses in the
+        aggregation transaction:
+        The aggregation transaction typically consumes approximately 1.3 ADA.
+        As we are consolidating collateral and transaction fees into a single UTxO,
+        we must ensure that the UTxO used contains at most the required ADA amount.
+        We limit the amount to a range of plus and minus 1 because when adding
+        collateral, we aim to avoid exposing ourselves to substantial
+        potential losses.
+        """
+        try:
+            utxos = await self.get_utxos(address=target_address)
+            for utxo in utxos:
+                # A collateral should contain no multi asset
+                if not utxo.output.amount.multi_asset:
+                    if utxo.output.amount < (required_amount + 10000000):
+                        if utxo.output.amount.coin >= (required_amount - 1000000):
+                            return utxo
+        except ApiError as err:
+            if err.status_code == 404:
+                logger.info("No utxos for tx fees found")
+                raise err
+
+            logger.warning(
+                "Requirements for tx fees couldn't be satisfied. need an utxo of >= 2 %s",
+                err,
+            )
+        return None
 
     async def submit_tx_builder(
         self,
         builder: TransactionBuilder,
         signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
         address: Address,
+        user_defined_expense: int = 0,
     ) -> None:
         """adds collateral and signers to tx, sign and submit tx.
 
         Args:
             builder (TransactionBuilder): transaction builder
-            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
-            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            signing_key (Union[PaymentSigningKey, ExtendedSigningKey]):
+        signing key
+            address (Address): address belonging to signing_key, used for
+        balancing, collateral and change
+            user_defined_fee: When not equal to 0, a UTxO with the specified
+        ADA amount is searched for to cover blockchain fees.
         """
-        builder = await self.process_common_inputs(builder, address, signing_key)
+        # The minimum suggested amount is 15 ADA for the Aggregate transaction,
+        # but ~1.3 ADA is commonly used for covering fees.
+        # The aggregate tx is considered the most costly transaction.
+
+        if user_defined_expense > 0:
+            builder = await self.process_common_inputs(
+                builder, address, signing_key, user_defined_expense
+            )
+        else:
+            builder = await self.process_common_inputs(builder, address, signing_key)
 
         signed_tx = builder.build_and_sign(
             [signing_key],
@@ -351,43 +450,11 @@ class ChainQuery:
 
         await self.wait_for_tx(str(tx.id))
 
-    async def find_collateral(self, target_address: Union[str, Address]) -> UTxO:
-        """
-        This method finds a collateral utxo for the given address with the following requirements:
-        - amount >= 5000000 lovelaces
-        - amount < 10000000 lovelaces
-        - no multi asset
-
-        Args:
-            target_address (str, Address): The address to find the collateral for.
-
-        Returns:
-            UTxO: The collateral utxo if found, None otherwise.
-        """
-        try:
-            utxos = await self.get_utxos(address=target_address)
-            for utxo in utxos:
-                # A collateral should contain no multi asset
-                if not utxo.output.amount.multi_asset:
-                    if utxo.output.amount < 10000000:
-                        if utxo.output.amount.coin >= 8000000:
-                            return utxo
-        except ApiError as err:
-            if err.status_code == 404:
-                logger.info("No utxos found")
-                raise err
-
-            logger.warning(
-                "Requirements for collateral couldn't be satisfied. need an utxo of >= 8000000\
-                and < 10000000, %s",
-                err,
-            )
-        return None
-
     async def create_collateral(
         self,
         target_address: Union[str, Address],
         skey: Union[PaymentSigningKey, ExtendedSigningKey],
+        required_amount: int,
     ) -> None:
         """
         This method creates a collateral utxo for the given address with the following requirements:
@@ -396,6 +463,7 @@ class ChainQuery:
         Args:
             target_address (str, Address): The address to create the collateral for.
             skey (PaymentSigningKey, ExtendedSigningKey): The signing key to sign the transaction.
+            required_amount: The required ADA amount in the UTxO.
 
         Returns:
             None
@@ -404,7 +472,9 @@ class ChainQuery:
         collateral_builder = TransactionBuilder(self.context)
 
         collateral_builder.add_input_address(target_address)
-        collateral_builder.add_output(TransactionOutput(target_address, 9000000))
+        collateral_builder.add_output(
+            TransactionOutput(target_address, required_amount)
+        )
 
         await self.submit_tx_with_print(
             collateral_builder.build_and_sign(
