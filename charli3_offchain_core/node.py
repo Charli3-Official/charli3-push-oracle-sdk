@@ -327,8 +327,17 @@ class Node:
                 # all node utxos referenced as reference inputs.
                 builder.reference_inputs.update(nodes_utxos)
 
+                # collateral + aggregation transaction fees
+                # Do not alter this value unless you have a clear understanding
+                # of the implications. If changed update the value inside the
+                # process_common_inputs as well.
+                # The suggested value is 9 ADA. In practice, it can be lower
+                # (3 ADA), but reducing it too much may lead to errors in the
+                # integration-test module.
+
+                user_defined_expense = 9000000
                 await self.chain_query.submit_tx_builder(
-                    builder, self.signing_key, self.address
+                    builder, self.signing_key, self.address, user_defined_expense
                 )
             else:
                 logger.error(
