@@ -71,20 +71,14 @@ def consensus(
         node_feeds (List[int]): Sorted node feeds list
         l_feeds (int): Length of the node_feeds
         _median (int): Median value among node_feeds
-        iqr_multiplier (int): k value for outlier detection. The recommended value is 0 (1.5),
-                              the onchain code has the range restriction between 0 - 4
+        iqr_multiplier (int): k value for outlier detection. The recommended value is 2,
+                              the onchain code has the range restriction between 1 - N
         diver_in_percentage (int): Percentage of divergence from the median allowed to
                                    participate in the consensus
 
     Returns:
         List[int]: List of consensus values.
     """
-
-    def scale(t: int, iqr: int) -> int:
-        if t == 0:
-            return iqr + iqr // 2
-
-        return t * iqr
 
     def divergence_from_median(node_feed: int) -> int:
         return (node_feed * FACTOR_RESOLUTION) // _median
@@ -93,8 +87,8 @@ def consensus(
     third_quart = third_quartile(node_feeds, l_feeds)
 
     interquartile_range = third_quart - first_quart
-    lower_bound = first_quart - scale(iqr_multiplier, interquartile_range)
-    upper_bound = third_quart + scale(iqr_multiplier, interquartile_range)
+    lower_bound = first_quart - (iqr_multiplier * interquartile_range)
+    upper_bound = third_quart + (iqr_multiplier * interquartile_range)
 
     return [
         x
