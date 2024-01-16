@@ -109,7 +109,7 @@ def first_quartile(node_feeds: List[int], l_feeds: int) -> float:
         float: Node feeds' first quartile
     """
     mid = l_feeds // 2
-    return median(node_feeds[:mid])
+    return int(median(node_feeds[:mid]))
 
 
 def third_quartile(node_feeds: List[int], l_feeds: int) -> float:
@@ -123,4 +123,4 @@ def third_quartile(node_feeds: List[int], l_feeds: int) -> float:
         float: Node feeds' third quartile
     """
     mid = (l_feeds // 2) + (l_feeds % 2)
-    return median(node_feeds[mid:])
+    return int(median(node_feeds[mid:]))
