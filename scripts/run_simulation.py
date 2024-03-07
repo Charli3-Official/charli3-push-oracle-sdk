@@ -12,6 +12,8 @@ from pycardano import (
     ExtendedSigningKey,
     HDWallet,
     BlockFrostChainContext,
+    TransactionId,
+    TransactionInput,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.node import Node
@@ -90,6 +92,15 @@ if (
 c3_token_hash = ScriptHash.from_primitive(config["oracle_info"]["c3_token_hash"])
 c3_token_name = AssetName(config["oracle_info"]["c3_token_name"].encode())
 
+if "reference_script_input" in config["oracle_info"]:
+    reference_script_input = config["oracle_info"]["reference_script_input"]
+    tx_id_hex, index = reference_script_input.split("#")
+    tx_id = TransactionId(bytes.fromhex(tx_id_hex))
+    index = int(index)
+    reference_script_input = TransactionInput(tx_id, index)
+else:
+    reference_script_input = None
+
 updates = config["updates"]
 
 nodes = []
@@ -115,7 +126,7 @@ for i, update in enumerate(updates):
         oracle_addr,
         c3_token_hash,
         c3_token_name,
-        None,
+        reference_script_input,
         c3_oracle_rate_address,
         c3_oracle_rate_nft,
     )

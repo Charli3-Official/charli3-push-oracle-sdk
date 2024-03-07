@@ -1,5 +1,5 @@
 """A CLI for managing the oracle owner actions."""
-from typing import Tuple, Literal
+from typing import Tuple
 import asyncio
 import click
 import yaml
@@ -16,6 +16,8 @@ from pycardano import (
     PaymentSigningKey,
     Transaction,
     VerificationKeyHash,
+    TransactionId,
+    TransactionInput,
 )
 
 from scripts.cli_common import (
@@ -119,6 +121,15 @@ def setup(ctx, config_file):
     ).mk_owner_script(script_start_slot)
     logger.info("Owner address: %s", owner_addr)
 
+    if "reference_script_input" in oracle_owner_config["oracle_info"]:
+        reference_script_input = oracle_owner_config["oracle_info"]["reference_script_input"]
+        tx_id_hex, index = reference_script_input.split("#")
+        tx_id = TransactionId(bytes.fromhex(tx_id_hex))
+        index = int(index)
+        reference_script_input = TransactionInput(tx_id, index)
+    else:
+        reference_script_input = None
+
     # (Rest of your setup code here...)
     oracle_owner = OracleOwner(
         network,
@@ -134,6 +145,7 @@ def setup(ctx, config_file):
         c3_token_name,
         oracle_addr,
         stake_vk,
+        reference_script_input,
         minting_script=native_script,
         validity_start=script_start_slot,
     )

@@ -1,4 +1,5 @@
 """Node contract transactions class"""
+
 import time
 from copy import deepcopy
 from typing import List, Union, Tuple
@@ -111,7 +112,7 @@ class Node:
             builder = TransactionBuilder(self.context)
 
             script_utxo = (
-                self.chain_query.get_reference_script_utxo(
+                await self.chain_query.get_reference_script_utxo(
                     self.oracle_addr,
                     self.reference_script_input,
                     self.oracle_script_hash,
@@ -230,7 +231,7 @@ class Node:
                 aggregate_redeemer = Redeemer(Aggregate())
 
                 script_utxo = (
-                    self.chain_query.get_reference_script_utxo(
+                    await self.chain_query.get_reference_script_utxo(
                         self.oracle_addr,
                         self.reference_script_input,
                         self.oracle_script_hash,
@@ -385,10 +386,22 @@ class Node:
 
         node_collect_redeemer = Redeemer(NodeCollect())
 
+        script_utxo = (
+            await self.chain_query.get_reference_script_utxo(
+                self.oracle_addr,
+                self.reference_script_input,
+                self.oracle_script_hash,
+            )
+            if self.reference_script_input
+            else None
+        )
+
         builder = TransactionBuilder(self.context)
 
         (
-            builder.add_script_input(reward_utxo, redeemer=node_collect_redeemer)
+            builder.add_script_input(
+                reward_utxo, script=script_utxo, redeemer=node_collect_redeemer
+            )
             .add_output(tx_output)
             .add_output(TransactionOutput(reward_address, Value(2000000, c3_asset)))
         )
