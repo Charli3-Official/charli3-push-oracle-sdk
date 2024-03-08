@@ -121,8 +121,8 @@ def setup(ctx, config_file):
     ).mk_owner_script(script_start_slot)
     logger.info("Owner address: %s", owner_addr)
 
-    if "reference_script_input" in oracle_owner_config["oracle_info"]:
-        reference_script_input = oracle_owner_config["oracle_info"]["reference_script_input"]
+    if "reference_script_input" in oracle_owner_config["oracle_owner"]:
+        reference_script_input = oracle_owner_config["oracle_owner"]["reference_script_input"]
         tx_id_hex, index = reference_script_input.split("#")
         tx_id = TransactionId(bytes.fromhex(tx_id_hex))
         index = int(index)
