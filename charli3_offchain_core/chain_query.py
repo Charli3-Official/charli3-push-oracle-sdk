@@ -1,5 +1,6 @@
 """ This module contains the ChainQuery class, which is used to query the blockchain."""
-from typing import List, Union
+
+from typing import List, Union, Tuple, Optional
 import asyncio
 import cbor2
 from blockfrost import ApiError
@@ -292,7 +293,7 @@ class ChainQuery:
         signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
         address: Address,
         user_defined_expense: int = 0,
-    ) -> None:
+    ) -> Tuple[str, Transaction]:
         """adds collateral and signers to tx, sign and submit tx.
 
         Args:
@@ -303,6 +304,10 @@ class ChainQuery:
         balancing, collateral and change
             user_defined_fee: When not equal to 0, a UTxO with the specified
         ADA amount is searched for to cover blockchain fees.
+
+        Returns:
+            Tuple[str, Transaction]: The status of the transaction and the
+            transaction object.
         """
         # The minimum suggested amount is 15 ADA for the Aggregate transaction,
         # but ~1.3 ADA is commonly used for covering fees.
@@ -323,15 +328,20 @@ class ChainQuery:
         )
 
         try:
-            await self.submit_tx_with_print(signed_tx)
+            return await self.submit_tx_with_print(signed_tx)
         except CollateralException as err:
             logger.error("Error submitting transaction: %s", err)
+            return "collateral error", signed_tx
         except (InsufficientUTxOBalanceException, UTxOSelectionException) as exc:
-            print("Insufficient Funds in the wallet.", exc)
+            logger.error("Insufficient Funds in the wallet. %s", exc)
+            return "insufficient funds", signed_tx
         except Exception as err:
             logger.error("Error submitting transaction: %s", err)
+            return "error", signed_tx
 
-    async def wait_for_tx(self, tx_id: TransactionId) -> Transaction:
+    async def wait_for_tx(
+        self, tx_id: TransactionId
+    ) -> Tuple[str, Optional[Transaction]]:
         """
         Waits for a transaction with the given ID to be confirmed.
         Retries the API call every 20 seconds if the transaction is not found.
@@ -341,7 +351,8 @@ class ChainQuery:
             tx_id (TransactionId): The transaction ID to wait for.
 
         Returns:
-            The transaction object if found, None otherwise.
+            Tuple[str, Optional[Transaction]]: The status of the transaction and
+            the transaction object if found, None otherwise.
         """
 
         async def _wait_for_tx(
@@ -350,7 +361,7 @@ class ChainQuery:
             check_fn: callable,
             retries: int = 0,
             max_retries: int = 10,
-        ) -> Transaction:
+        ) -> Tuple[str, Optional[Transaction]]:
             """Wait for a transaction to be confirmed.
 
             Args:
@@ -363,23 +374,28 @@ class ChainQuery:
             Returns:
                 The transaction object if found, None otherwise.
             """
+            status = "initiated"
+            transaction = None
             while retries < max_retries:
                 try:
-                    response = await check_fn(context, tx_id)
-                    if response:
+                    transaction = await check_fn(context, tx_id)
+                    if transaction:
                         logger.info("Transaction submitted with tx_id: %s", str(tx_id))
-                        return response
+                        status = "success"
+                        return status, transaction
 
                 except ApiError as err:
                     if err.status_code == 404:
                         pass
                     else:
-                        raise err
+                        status = "error: " + str(err)
+                        return status, None
 
                 except Exception as err:
-                    raise err
+                    status = "error: " + str(err)
+                    return status, None
 
-                wait_time = 10 if isinstance(context, OgmiosChainContext) else 20
+                wait_time = 20
                 logger.info(
                     "Waiting for transaction confirmation: %s. Retrying in %d seconds",
                     str(tx_id),
@@ -391,6 +407,7 @@ class ChainQuery:
             logger.error(
                 "Transaction not found after %d retries. Giving up.", max_retries
             )
+            return status, transaction
 
         async def check_blockfrost(
             context: BlockFrostChainContext, tx_id: TransactionId
@@ -428,7 +445,7 @@ class ChainQuery:
         if self.blockfrost_context:
             return await _wait_for_tx(self.blockfrost_context, tx_id, check_blockfrost)
 
-    async def submit_tx_with_print(self, tx: Transaction) -> None:
+    async def submit_tx_with_print(self, tx: Transaction) -> Tuple[str, Transaction]:
         """
         This method submits a transaction to the chain and prints the transaction ID.
 
@@ -436,7 +453,7 @@ class ChainQuery:
             tx: The transaction to submit.
 
         Returns:
-            None
+            Tuple[str, Transaction]: The status of the transaction and the transaction object.
         """
         logger.info("Submitting transaction: %s", str(tx.id))
         logger.debug("tx: %s", tx)
@@ -448,7 +465,8 @@ class ChainQuery:
             logger.info("Submitting tx with blockfrost")
             self.blockfrost_context.submit_tx(tx.to_cbor())
 
-        await self.wait_for_tx(str(tx.id))
+        status, _ = await self.wait_for_tx(str(tx.id))
+        return status, tx
 
     async def create_collateral(
         self,
