@@ -2,7 +2,7 @@
 
 import time
 from copy import deepcopy
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 from pycardano import (
     Network,
     Address,
@@ -19,6 +19,7 @@ from pycardano import (
     ScriptHash,
     Value,
     TransactionInput,
+    Transaction,
 )
 from charli3_offchain_core.datums import (
     NodeDatum,
@@ -84,8 +85,9 @@ class Node:
         self.oracle_script_hash = self.oracle_addr.payment_part
         self.oracle_rate_addr = oracle_rate_addr
         self.rate_nft = oracle_rate_nft
+        self.id = None
 
-    async def update(self, rate: int) -> None:
+    async def update(self, rate: int) -> Optional[Tuple[str, Transaction]]:
         """build's partial node update tx.
 
         This method is called by the node to update its own feed.
@@ -94,8 +96,9 @@ class Node:
             rate (int): price rate to be updated.
 
         Returns:
-            None
-
+            Optional[Tuple[str, Transaction]]: This flag indicates the transaction/operation status:
+                Tuple[str, Transaction]: if transaction is successful and accepted by the network.
+                None: if transaction is failed or dropped from the mempool.
         """
         logger.info("node update called: %d", rate)
         oracle_utxos = await self.chain_query.get_utxos(self.oracle_addr)
@@ -125,15 +128,16 @@ class Node:
                 node_own_utxo, script=script_utxo, redeemer=node_update_redeemer
             ).add_output(node_own_utxo.output)
 
-            await self.chain_query.submit_tx_builder(
+            return await self.chain_query.submit_tx_builder(
                 builder, self.signing_key, self.address
             )
         else:
             logger.error("Node's own utxo is not found")
+            return None
 
     async def aggregate(
         self,
-    ):
+    ) -> Optional[Tuple[int, List[UTxO], RewardDatum, str, Transaction]]:
         """build's partial node aggregate tx.
 
         This method is called by the node to aggregate the oracle feed.
@@ -142,10 +146,12 @@ class Node:
             rate (int): price rate to be updated.
 
         Returns:
-            bool : This flag indicates the transaction/operation status:
-                True: if transaction is successful and accepted by the network.
-                False: if transaction is failed or dropped from the mempool.
-
+            Optional[Tuple[int, List[UTxO], str, Transaction]]:
+                agg_value (int): aggregated value.
+                valid_nodes (List[UTxO]): list of valid nodes.
+                reward_datum (RewardDatum): output reward datum.
+                str: This flag indicates the transaction/operation status:
+                tx (Transaction): if transaction is successful and accepted by the network.
         """
         c3_oracle_rate_feed = None
         c3_oracle_rate_utxo = None
@@ -337,19 +343,24 @@ class Node:
                 # integration-test module.
 
                 user_defined_expense = 9000000
-                await self.chain_query.submit_tx_builder(
+                status, tx = await self.chain_query.submit_tx_builder(
                     builder, self.signing_key, self.address, user_defined_expense
                 )
+                return agg_value, valid_nodes, reward_datum, status, tx
             else:
                 logger.error(
                     "The required minimum number of nodes for aggregation has not been met. \
                      aggregation conditions failed."
                 )
+                return None
 
         else:
             logger.error("Not enough C3s to perform aggregation")
+            return None
 
-    async def collect(self, reward_address: Address) -> None:
+    async def collect(
+        self, reward_address: Address
+    ) -> Optional[Tuple[str, Transaction]]:
         """
         build's partial node collect tx.
 
@@ -359,8 +370,9 @@ class Node:
             None
 
         Returns:
-            None
-
+            Optional[Tuple[str, Transaction]]: This flag indicates the transaction/operation status:
+                Tuple[str, Transaction]: if transaction is successful and accepted by the network.
+                None: if transaction is failed or dropped from the mempool.
         """
         oracle_utxos = await self.chain_query.get_utxos(self.oracle_addr)
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum(oracle_utxos)
@@ -406,7 +418,7 @@ class Node:
             .add_output(TransactionOutput(reward_address, Value(2000000, c3_asset)))
         )
 
-        await self.chain_query.submit_tx_builder(
+        return await self.chain_query.submit_tx_builder(
             builder, self.signing_key, self.address
         )
 
