@@ -4,8 +4,13 @@ payment_vk:
 stake_vk:
 network: "testnet"
 chain_query:
-  token_id: "YOUR_TOKEN_ID_HERE"
-  base_url: "https://cardano-preprod.blockfrost.io/api"
+  # either blockfrost or ogmios can be used
+  blockfrost:
+    api_url: https://cardano-preprod.blockfrost.io/api
+    project_id: "your project id here"
+  ogmios:
+    ws_url: # ws://ogmios_url
+    kupo_url: # http://kupo_url
 
 oracle_owner:
   oracle_addr: "addr_test1wp6kt5etqmudy6pwhdp8g97ydt47w9znthu7ws9ar0rmptgkn2qzy"

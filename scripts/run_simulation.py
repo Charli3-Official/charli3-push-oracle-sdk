@@ -1,4 +1,5 @@
 """Run simulation of the C3 protocol."""
+
 import asyncio
 from typing import Union
 import yaml
@@ -14,27 +15,50 @@ from pycardano import (
     BlockFrostChainContext,
     TransactionId,
     TransactionInput,
+    OgmiosChainContext,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.node import Node
 
-with open("run-node-simulator.yml", "r") as stream:
+with open("run-node-simulator.yml", "r", encoding="utf-8") as stream:
     config = yaml.safe_load(stream)
 
 network = Network.MAINNET
 if config["network"] == "testnet":
     network = Network.TESTNET
 
-blockfrost_base_url = config["chain_query"]["base_url"]
-blockfrost_project_id = config["chain_query"]["token_id"]
+chain_query_config = config["chain_query"]
 
-blockfrost_context = BlockFrostChainContext(
-    blockfrost_project_id,
-    base_url=blockfrost_base_url,
-)
+blockfrost_config = chain_query_config.get("blockfrost")
+ogmios_config = chain_query_config.get("ogmios")
 
-context = ChainQuery(
-    blockfrost_context,
+blockfrost_context = None  # pylint: disable=invalid-name
+ogmios_context = None  # pylint: disable=invalid-name
+
+if (
+    blockfrost_config
+    and blockfrost_config.get("api_url")
+    and blockfrost_config.get("project_id")
+):
+    blockfrost_token = blockfrost_config["project_id"]
+    blockfrost_url = blockfrost_config["api_url"]
+    blockfrost_context = BlockFrostChainContext(
+        blockfrost_token,
+        base_url=blockfrost_url,
+    )
+
+if ogmios_config and ogmios_config.get("ws_url") and ogmios_config.get("kupo_url"):
+    ogmios_ws_url = ogmios_config["ws_url"]
+    kupo_url = ogmios_config.get("kupo_url")
+
+    ogmios_context = OgmiosChainContext(
+        network=network,
+        ws_url=ogmios_ws_url,
+        kupo_url=kupo_url,
+    )
+
+chain_query = ChainQuery(
+    blockfrost_context=blockfrost_context, ogmios_context=ogmios_context
 )
 nft_hash = config["oracle_info"]["minting_nft_hash"]
 
@@ -57,7 +81,7 @@ def create_c3_oracle_rate_nft(token_name, minting_policy) -> Union[MultiAsset, N
         return None
 
 
-c3_oracle_rate_nft_hash = None
+c3_oracle_rate_nft_hash = None  # pylint: disable=invalid-name
 if (
     "oracle_info" in config
     and "c3_rate_nft_hash" in config["oracle_info"]
@@ -67,7 +91,7 @@ if (
         config["oracle_info"]["c3_rate_nft_hash"]
     )
 
-c3_oracle_rate_nft_name = None
+c3_oracle_rate_nft_name = None  # pylint: disable=invalid-name
 if (
     "oracle_info" in config
     and "c3_rate_nft_name" in config["oracle_info"]
@@ -79,7 +103,7 @@ c3_oracle_rate_nft = create_c3_oracle_rate_nft(
     c3_oracle_rate_nft_name, c3_oracle_rate_nft_hash
 )
 
-c3_oracle_rate_address = None
+c3_oracle_rate_address = None  # pylint: disable=invalid-name
 if (
     "oracle_info" in config
     and "c3_oracle_rate_address" in config["oracle_info"]
@@ -99,7 +123,7 @@ if "reference_script_input" in config["oracle_info"]:
     index = int(index)
     reference_script_input = TransactionInput(tx_id, index)
 else:
-    reference_script_input = None
+    reference_script_input = None  # pylint: disable=invalid-name
 
 updates = config["updates"]
 
@@ -116,7 +140,7 @@ for i, update in enumerate(updates):
 
     node = Node(
         network,
-        context,
+        chain_query,
         node_signing_key,
         node_verification_key,
         node_nft,
