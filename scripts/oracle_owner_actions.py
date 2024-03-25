@@ -1,4 +1,5 @@
 """A CLI for managing the oracle owner actions."""
+
 from typing import Tuple
 import asyncio
 import click
@@ -18,6 +19,7 @@ from pycardano import (
     VerificationKeyHash,
     TransactionId,
     TransactionInput,
+    OgmiosChainContext,
 )
 
 from scripts.cli_common import (
@@ -50,7 +52,7 @@ def cli(ctx):
 def setup(ctx, config_file):
     """Setup the oracle owner actions."""
     # Load the configuration file
-    with open(config_file, "r") as f:
+    with open(config_file, "r", encoding="utf-8") as f:
         oracle_owner_config = yaml.safe_load(f)
 
     if oracle_owner_config["MNEMONIC_24"]:
@@ -83,16 +85,42 @@ def setup(ctx, config_file):
     if oracle_owner_config["network"] == "testnet":
         network = Network.TESTNET
 
-    blockfrost_base_url = oracle_owner_config["chain_query"]["base_url"]
-    blockfrost_project_id = oracle_owner_config["chain_query"]["token_id"]
+    chain_query_config = oracle_owner_config["chain_query"]
 
-    blockfrost_context = BlockFrostChainContext(
-        blockfrost_project_id,
-        base_url=blockfrost_base_url,
-    )
+    blockfrost_config = chain_query_config.get("blockfrost")
+    ogmios_config = chain_query_config.get("ogmios")
+
+    blockfrost_context = None
+    ogmios_context = None
+
+    if (
+        blockfrost_config
+        and blockfrost_config.get("api_url")
+        and blockfrost_config.get("project_id")
+    ):
+        blockfrost_token = blockfrost_config["project_id"]
+        blockfrost_url = blockfrost_config["api_url"]
+        blockfrost_context = BlockFrostChainContext(
+            blockfrost_token,
+            base_url=blockfrost_url,
+        )
+
+    if (
+        ogmios_config
+        and ogmios_config.get("ws_url")
+        and ogmios_config.get("kupo_url")
+    ):
+        ogmios_ws_url = ogmios_config["ws_url"]
+        kupo_url = ogmios_config.get("kupo_url")
+
+        ogmios_context = OgmiosChainContext(
+            network=network,
+            ws_url=ogmios_ws_url,
+            kupo_url=kupo_url,
+        )
 
     chain_query = ChainQuery(
-        blockfrost_context,
+        blockfrost_context=blockfrost_context, ogmios_context=ogmios_context
     )
 
     owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network)
@@ -122,7 +150,9 @@ def setup(ctx, config_file):
     logger.info("Owner address: %s", owner_addr)
 
     if "reference_script_input" in oracle_owner_config["oracle_owner"]:
-        reference_script_input = oracle_owner_config["oracle_owner"]["reference_script_input"]
+        reference_script_input = oracle_owner_config["oracle_owner"][
+            "reference_script_input"
+        ]
         tx_id_hex, index = reference_script_input.split("#")
         tx_id = TransactionId(bytes.fromhex(tx_id_hex))
         index = int(index)
@@ -222,7 +252,7 @@ def mk_oracle_close(ctx):
                 platform_pkhs, withdrawal_addr, disbursementChoice
             )
         )
-        logger.info(f"Created oracle close tx id: {tx.id}")
+        logger.info("Created oracle close tx id: %s", tx.id)
         write_tx_to_file("oracle_close.cbor", tx)
 
 
@@ -238,7 +268,7 @@ def mk_platform_collect(ctx):
         tx = asyncio.run(
             oracle_owner.mk_platform_collect_tx(platform_pkhs, withdrawal_addr)
         )
-        logger.info(f"Created platform collect tx id: {tx.id}")
+        logger.info("Created platform collect tx id: %s", tx.id)
         write_tx_to_file("platform_collect.cbor", tx)
 
 
@@ -313,7 +343,7 @@ def mk_edit_settings(ctx):
 
     if changes_made and platform_pkhs:
         tx = asyncio.run(oracle_owner.mk_edit_settings_tx(platform_pkhs, ag_settings))
-        logger.info(f"Created edit settings tx id: {tx.id}")
+        logger.info("Created edit settings tx id: %s", tx.id)
         write_tx_to_file("edit_settings.cbor", tx)
     else:
         click.echo("No changes were made.")
@@ -327,7 +357,7 @@ def sign_tx(ctx):
     try:
         tx, filename = parse_and_check_tx_interactively(oracle_owner)
     except TxValidationException as err:
-        logger.error(f"Tx validation failed, aborting, reason: {err}")
+        logger.error("Tx validation failed, aborting, reason: %s", err)
     else:
         answer = click.prompt("Do you want to sign this tx? y/n")
         if answer == "y":
@@ -346,7 +376,7 @@ def sign_and_submit_tx(ctx):
     try:
         tx, _ = parse_and_check_tx_interactively(oracle_owner)
     except TxValidationException as err:
-        logger.error(f"Tx validation failed, aborting, reason: {err}")
+        logger.error("Tx validation failed, aborting, reason: %s", err)
     else:
         answer = click.prompt("Do you want to sign and submit this tx? y/n")
         if answer == "y":

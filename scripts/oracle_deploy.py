@@ -1,11 +1,9 @@
 """Deployment of the oracle contract  on Cardano blockchain"""
+
 from typing import Tuple
 import asyncio
-import zipfile
 import os
 import subprocess
-import json
-import cbor2
 import yaml
 import click
 from pycardano import (
@@ -22,6 +20,7 @@ from pycardano import (
     IndefiniteList,
     BlockFrostChainContext,
     VerificationKeyHash,
+    OgmiosChainContext,
 )
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.owner_script import OwnerScript
@@ -79,7 +78,7 @@ def generate_validator_arguments(file_name, arguments):
         else:
             str_arguments[key] = value
 
-    with open(file_name, "w") as file:
+    with open(file_name, "w", encoding="utf-8") as file:
         yaml.safe_dump(
             str_arguments, file, default_flow_style=False, allow_unicode=True
         )
@@ -161,30 +160,51 @@ def execute_binary_from_image(
 def setup(ctx, config_file, script_path, is_local_image, image_name):
     """Setup the oracle owner actions."""
     # Load configuration from YAML file
-    with open(config_file, "r") as ymlfile:
+    with open(config_file, "r", encoding="utf-8") as ymlfile:
         config = yaml.safe_load(ymlfile)
 
-    MNEMONIC_24 = config["MNEMONIC_24"]
+    mnemonic_24 = config["MNEMONIC_24"]
     script_start_slot = config["script_start_slot"]
     if config["network"] == "TESTNET":
         network = Network.TESTNET
     elif config["network"] == "MAINNET":
         network = Network.MAINNET
-    blockfrost_base_url = config["chain_query"]["base_url"]
-    blockfrost_project_id = config["chain_query"]["token_id"]
 
-    blockfrost_context = BlockFrostChainContext(
-        blockfrost_project_id,
-        base_url=blockfrost_base_url,
-    )
+    chain_query_config = config.get("chain_query")
+
+    blockfrost_config = chain_query_config.get("blockfrost")
+    ogmios_config = chain_query_config.get("ogmios")
+
+    blockfrost_context = None
+    ogmios_context = None
+
+    if (
+        blockfrost_config
+        and blockfrost_config.get("api_url")
+        and blockfrost_config.get("project_id")
+    ):
+        blockfrost_token = blockfrost_config["project_id"]
+        blockfrost_url = blockfrost_config["api_url"]
+        blockfrost_context = BlockFrostChainContext(
+            blockfrost_token,
+            base_url=blockfrost_url,
+        )
+
+    if ogmios_config and ogmios_config.get("ws_url") and ogmios_config.get("kupo_url"):
+        ogmios_ws_url = ogmios_config["ws_url"]
+        kupo_url = ogmios_config.get("kupo_url")
+
+        ogmios_context = OgmiosChainContext(
+            network=network,
+            ws_url=ogmios_ws_url,
+            kupo_url=kupo_url,
+        )
 
     chain_query = ChainQuery(
-        blockfrost_context,
+        blockfrost_context=blockfrost_context, ogmios_context=ogmios_context
     )
 
-    chain_query = ChainQuery(blockfrost_context=blockfrost_context)
-
-    hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
+    hdwallet = HDWallet.from_mnemonic(mnemonic_24)
     hdwallet_spend = hdwallet.derive_from_path("m/1852'/1815'/0'/0/0")
     spend_public_key = hdwallet_spend.public_key
     spend_vk = PaymentVerificationKey.from_primitive(spend_public_key)
@@ -242,7 +262,7 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
         )
 
     # Oracle settings
-    agSettings = OracleSettings(
+    ag_settings = OracleSettings(
         os_node_list=[
             bytes.fromhex(node) for node in config["oracle_settings"]["os_node_list"]
         ],
@@ -271,7 +291,7 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
         stake_key=stake_vk,
         oracle_script=oracle_script,
         script_start_slot=script_start_slot,
-        settings=agSettings,
+        settings=ag_settings,
         c3_token_hash=c3_token_hash,
         c3_token_name=c3_token_name,
     )
@@ -302,7 +322,7 @@ def sign_tx(ctx):
     try:
         tx, filename = parse_and_check_tx_interactively(oracle_start)
     except TxValidationException as err:
-        logger.error(f"Tx validation failed, aborting, reason: {err}")
+        logger.error("Tx validation failed, aborting, reason: %s", err)
     else:
         answer = click.prompt("Do you want to sign this tx? y/n")
         if answer == "y":
@@ -321,7 +341,7 @@ def sign_and_submit_tx(ctx):
     try:
         tx, _ = parse_and_check_tx_interactively(oracle_start)
     except TxValidationException as err:
-        logger.error(f"Tx validation failed, aborting, reason: {err}")
+        logger.error("Tx validation failed, aborting, reason: %s", err)
     else:
         answer = click.prompt("Do you want to sign and submit this tx? y/n")
         if answer == "y":
