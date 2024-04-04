@@ -94,6 +94,7 @@ class PriceRewards(PlutusData):
 class OraclePlatform(PlutusData):
     """Oracle Platform parameters"""
 
+    CONSTR_ID = 0
     pmultisig_pkhs: IndefiniteList
     """ allowed pkhs for platform authorization :: [PubKeyHash] """
     pmultisig_threshold: int

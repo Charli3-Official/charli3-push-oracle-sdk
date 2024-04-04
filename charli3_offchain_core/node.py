@@ -463,10 +463,19 @@ class Node:
         if len(nodes_utxo) > 0:
             for utxo in nodes_utxo:
                 if utxo.output.datum:
-                    if utxo.output.datum.cbor:
+                    # Check if datum is not already a NodeDatum instance before
+                    # accessing cbor
+                    if (
+                        not isinstance(utxo.output.datum, NodeDatum)
+                        and utxo.output.datum.cbor
+                    ):
                         utxo.output.datum = NodeDatum.from_cbor(utxo.output.datum.cbor)
 
-                    if utxo.output.datum.node_state.ns_operator == self.node_operator:
+                    if (
+                        isinstance(utxo.output.datum, NodeDatum)
+                        and utxo.output.datum.node_state.ns_operator
+                        == self.node_operator
+                    ):
                         return utxo
         return None
 
