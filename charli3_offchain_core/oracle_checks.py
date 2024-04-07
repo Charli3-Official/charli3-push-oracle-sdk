@@ -220,13 +220,13 @@ def convert_cbor_to_node_datums(node_utxos: List[UTxO]) -> List[UTxO]:
     - A list of UTxO objects that contain NodeDatum objects in their original Python format.
     """
     result: List[UTxO] = []
-
-    if len(node_utxos) > 0:
-        for utxo in node_utxos:
-            if utxo.output.datum:
-                node_datum: NodeDatum = NodeDatum.from_cbor(utxo.output.datum.cbor)
-                utxo.output.datum = node_datum
+    for utxo in node_utxos:
+        if utxo.output.datum and not isinstance(utxo.output.datum, NodeDatum):
+            if utxo.output.datum.cbor:
+                utxo.output.datum = NodeDatum.from_cbor(utxo.output.datum.cbor)
                 result.append(utxo)
+        elif utxo.output.datum and isinstance(utxo.output.datum, NodeDatum):
+            result.append(utxo)
     return result
 
 
@@ -322,7 +322,10 @@ def get_oracle_utxos_with_datums(
     node_utxos_with_datum = convert_cbor_to_node_datums(nodes_utxos)
 
     try:
-        if aggstate_utxo.output.datum:
+        if (
+            not isinstance(aggstate_utxo.output.datum, AggDatum)
+            and aggstate_utxo.output.datum.cbor
+        ):
             aggstate_utxo.output.datum = AggDatum.from_cbor(
                 aggstate_utxo.output.datum.cbor
             )
@@ -330,7 +333,10 @@ def get_oracle_utxos_with_datums(
         logger.error("Invalid CBOR data for AggDatum")
 
     try:
-        if oraclefeed_utxo.output.datum:
+        if (
+            not isinstance(oraclefeed_utxo.output.datum, OracleDatum)
+            and oraclefeed_utxo.output.datum.cbor
+        ):
             oraclefeed_utxo.output.datum = OracleDatum.from_cbor(
                 oraclefeed_utxo.output.datum.cbor
             )
@@ -338,7 +344,10 @@ def get_oracle_utxos_with_datums(
         logger.error("Invalid CBOR data for OracleDatum")
 
     try:
-        if reward_utxo.output.datum:
+        if (
+            not isinstance(reward_utxo.output.datum, RewardDatum)
+            and reward_utxo.output.datum.cbor
+        ):
             reward_utxo.output.datum = RewardDatum.from_cbor(
                 reward_utxo.output.datum.cbor
             )
