@@ -20,6 +20,7 @@ from pycardano import (
     Value,
     TransactionInput,
     Transaction,
+    BlockFrostChainContext,
 )
 from charli3_offchain_core.datums import (
     NodeDatum,
@@ -120,7 +121,7 @@ class Node:
                     self.reference_script_input,
                     self.oracle_script_hash,
                 )
-                if self.reference_script_input
+                if self.reference_script_input and isinstance(self.context, BlockFrostChainContext)
                 else None
             )
 
@@ -242,7 +243,7 @@ class Node:
                         self.reference_script_input,
                         self.oracle_script_hash,
                     )
-                    if self.reference_script_input
+                    if self.reference_script_input and isinstance(self.context, BlockFrostChainContext)
                     else None
                 )
 
@@ -404,7 +405,7 @@ class Node:
                 self.reference_script_input,
                 self.oracle_script_hash,
             )
-            if self.reference_script_input
+            if self.reference_script_input and isinstance(self.context, BlockFrostChainContext)
             else None
         )
 

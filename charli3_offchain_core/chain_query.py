@@ -107,8 +107,9 @@ class ChainQuery:
         if len(utxos) > 0:
             for utxo in utxos:
                 if utxo.input == reference_script_input:
-                    script = await self.get_plutus_script(oracle_script_hash)
-                    utxo.output.script = script
+                    if isinstance(self.context, BlockFrostChainContext):
+                        script = await self.get_plutus_script(oracle_script_hash)
+                        utxo.output.script = script
                     return utxo
 
     async def get_plutus_script(self, scripthash: ScriptHash) -> PlutusV2Script:
@@ -122,13 +123,18 @@ class ChainQuery:
             PlutusV2Script: plutus script if script hash matches else None
 
         """
-        plutus_script = self.context._get_script(str(scripthash))
-        if plutus_script_hash(plutus_script) != scripthash:
-            plutus_script = PlutusV2Script(cbor2.dumps(plutus_script))
-        if plutus_script_hash(plutus_script) == scripthash:
-            return plutus_script
+        if isinstance(self.context, BlockFrostChainContext):
+            plutus_script = self.context._get_script(str(scripthash))
+            if plutus_script_hash(plutus_script) != scripthash:
+                plutus_script = PlutusV2Script(cbor2.dumps(plutus_script))
+            if plutus_script_hash(plutus_script) == scripthash:
+                return plutus_script
 
-        logger.error("script hash mismatch")
+            logger.error("script hash mismatch")
+
+        if isinstance(self.context, OgmiosChainContext):
+            logger.error("ogmios context does not support get_script")
+            return None
 
     async def get_utxos(self, address: Union[str, Address, None] = None) -> List[UTxO]:
         """
