@@ -1,7 +1,6 @@
-import pytest
-
 import asyncio
 
+import pytest
 from retry import retry
 
 from .base import TEST_RETRIES

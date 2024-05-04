@@ -273,3 +273,35 @@ from charli3_offchain_core import mint, datums, redeemers, node
 ```
 
 Remember to replace `<username>` and `<token>` with your actual GitHub username and token.
+
+## Using Pre-Commit Hooks
+
+Pre-commit hooks are integral to maintaining high code quality. They automatically check your changes for common issues before you commit them, ensuring consistency and preventing bugs.
+
+### Install the Pre-Commit Hooks
+
+Follow these steps to set up pre-commit hooks in your local development environment:
+
+1. **Install pre-commit**: Ensure that you have pre-commit installed. If it's not already installed, you can install it via pip. Open your terminal and run:
+
+   ```bash
+   pip install pre-commit
+   ```
+
+2. **Activate pre-commit**: Inside the repository's root directory (where the `.pre-commit-config.yaml` file is located), run the following command to install the pre-commit hooks:
+
+   ```bash
+   pre-commit install
+   ```
+
+This setup automatically triggers the hooks to run on the staged files each time you attempt a commit, helping catch any issues early in the development cycle.
+
+### Running Hooks Manually
+
+To manually trigger the hooks across all files in the project, perhaps to ensure consistency or prepare older code, use the following command:
+
+```bash
+pre-commit run --all-files
+```
+
+This command is particularly useful for checking the entire codebase, especially before pushing to a shared repository or integrating changes.

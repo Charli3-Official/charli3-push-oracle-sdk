@@ -1,7 +1,8 @@
 """Business logic for calculating the aggregation and consensus."""
-from typing import List, Tuple
-from statistics import median
+
 import random
+from statistics import median
+from typing import List, Tuple
 
 FACTOR_RESOLUTION = 10000
 

@@ -1,7 +1,6 @@
-import pytest
-
 import asyncio
 
+import pytest
 from retry import retry
 
 from .base import TEST_RETRIES
@@ -18,7 +17,7 @@ class TestOracleClose(OracleOwnerActions):
     async def test_oracle_close(self):
         platform_pkhs = [self.oracle_owner.pub_key_hash.payload.hex()]
 
-        # Oracle close distribuiting unclaimed C3 tokens to each node
+        # Oracle close distributing unclaimed C3 tokens to each node
         tx = await self.oracle_owner.mk_oracle_close_tx(
             platform_pkhs, self.oracle_owner.address, "TO_NODES"
         )

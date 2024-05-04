@@ -1,6 +1,8 @@
 """Datums implementation"""
+
 from dataclasses import dataclass, field
-from typing import Union, List, Optional
+from typing import List, Optional, Union
+
 from pycardano import PlutusData
 from pycardano.serialization import IndefiniteList
 

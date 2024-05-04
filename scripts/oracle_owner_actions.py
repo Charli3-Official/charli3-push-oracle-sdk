@@ -1,41 +1,41 @@
 """A CLI for managing the oracle owner actions."""
 
-from typing import Tuple
 import asyncio
+from typing import Tuple
+
 import click
 import yaml
 from pycardano import (
-    HDWallet,
     Address,
-    Network,
-    ExtendedSigningKey,
-    PaymentVerificationKey,
-    MultiAsset,
-    ScriptHash,
     AssetName,
     BlockFrostChainContext,
+    ExtendedSigningKey,
+    HDWallet,
+    MultiAsset,
+    Network,
+    OgmiosChainContext,
     PaymentSigningKey,
+    PaymentVerificationKey,
+    ScriptHash,
     Transaction,
-    VerificationKeyHash,
     TransactionId,
     TransactionInput,
-    OgmiosChainContext,
+    VerificationKeyHash,
 )
 
-from scripts.cli_common import (
-    collect_multisig_pkhs,
-    write_tx_to_file,
-    load_plutus_script,
-    read_tx_from_file,
-    COLOR_DEFAULT,
-    COLOR_RED,
-)
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.tx_validation import TxValidationException, TxValidator
 from charli3_offchain_core.utils.logging_config import logging
-from charli3_offchain_core.tx_validation import TxValidator, TxValidationException
-
+from scripts.cli_common import (
+    COLOR_DEFAULT,
+    COLOR_RED,
+    collect_multisig_pkhs,
+    load_plutus_script,
+    read_tx_from_file,
+    write_tx_to_file,
+)
 
 logger = logging.getLogger("oracle_owner_actions")
 
@@ -105,11 +105,7 @@ def setup(ctx, config_file):
             base_url=blockfrost_url,
         )
 
-    if (
-        ogmios_config
-        and ogmios_config.get("ws_url")
-        and ogmios_config.get("kupo_url")
-    ):
+    if ogmios_config and ogmios_config.get("ws_url") and ogmios_config.get("kupo_url"):
         ogmios_ws_url = ogmios_config["ws_url"]
         kupo_url = ogmios_config.get("kupo_url")
 

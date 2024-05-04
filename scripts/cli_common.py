@@ -1,8 +1,9 @@
-from typing import List
 import json
+from typing import List
+
 import cbor2
 import click
-from pycardano import Transaction, PlutusV2Script
+from pycardano import PlutusV2Script, Transaction
 
 # ANSI colors
 COLOR_RED = "\033[0;31m"

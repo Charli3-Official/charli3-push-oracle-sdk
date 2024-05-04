@@ -1,24 +1,26 @@
-import pytest
 import asyncio
 import os
-import cbor2
-import yaml
 
-from retry import retry
+import cbor2
+import pytest
+import yaml
 from pycardano import (
-    MultiAsset,
     Address,
-    TransactionOutput,
-    Value,
+    MultiAsset,
     RawCBOR,
-    plutus_script_hash,
+    TransactionOutput,
     UTxO,
+    Value,
+    plutus_script_hash,
 )
-from .base import TEST_RETRIES, MultisigTestBase
-from charli3_offchain_core.oracle_start import OracleStart
-from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
+from retry import retry
+
 from charli3_offchain_core.mint import Mint
+from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
+from charli3_offchain_core.oracle_start import OracleStart
 from scripts.oracle_deploy import execute_binary_from_image
+
+from .base import TEST_RETRIES, MultisigTestBase
 
 
 @pytest.mark.order(1)

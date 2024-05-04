@@ -1,14 +1,17 @@
 """ Conditions for calculating aggregation."""
-from typing import Tuple, List
+
+from typing import List, Tuple
+
 from pycardano import IndefiniteList, UTxO
+
+from charli3_offchain_core.consensus import aggregation
 from charli3_offchain_core.datums import (
-    OracleSettings,
-    OracleDatum,
     NodeDatum,
     Nothing,
+    OracleDatum,
+    OracleSettings,
     PriceRewards,
 )
-from charli3_offchain_core.consensus import aggregation
 from charli3_offchain_core.utils.logging_config import logging
 
 factor_resolution: int = 10000
