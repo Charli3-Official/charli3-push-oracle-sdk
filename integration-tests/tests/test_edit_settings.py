@@ -1,15 +1,14 @@
-import pytest
-
 import asyncio
 
+import pytest
+from pycardano import UTxO
 from retry import retry
 
-from pycardano import UTxO
+from charli3_offchain_core.datums import AggDatum, PriceRewards
+from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 from .base import TEST_RETRIES
 from .owner_actions import OracleOwnerActions
-from charli3_offchain_core.datums import AggDatum, PriceRewards
-from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 
 @pytest.mark.order(4)

@@ -1,28 +1,30 @@
 """ This module contains the ChainQuery class, which is used to query the blockchain."""
 
-from typing import List, Union, Tuple, Optional
 import asyncio
+from typing import List, Optional, Tuple, Union
+
 import cbor2
 from blockfrost import ApiError
 from pycardano import (
     Address,
-    UTxO,
-    PaymentSigningKey,
-    ExtendedSigningKey,
     BlockFrostChainContext,
+    ExtendedSigningKey,
+    InsufficientUTxOBalanceException,
     OgmiosChainContext,
+    PaymentSigningKey,
+    PlutusV2Script,
+    ScriptHash,
     Transaction,
-    TransactionOutput,
     TransactionBuilder,
     TransactionId,
     TransactionInput,
-    ScriptHash,
-    plutus_script_hash,
-    PlutusV2Script,
+    TransactionOutput,
+    UTxO,
     UTxOSelectionException,
-    InsufficientUTxOBalanceException,
     VerificationKeyWitness,
+    plutus_script_hash,
 )
+
 from charli3_offchain_core.datums import NodeDatum
 from charli3_offchain_core.utils.exceptions import CollateralException
 from charli3_offchain_core.utils.logging_config import logging
@@ -234,11 +236,11 @@ class ChainQuery:
         signing_key: Union[PaymentSigningKey, ExtendedSigningKey],
         required_amount: int,
     ) -> UTxO:
-        """get or create utxo for covert blockchain transaction fees
+        """get or create utxo for convert blockchain transaction fees
         Args:
             address (Address): address belonging to signing_key, used for balancing, collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
-            required_amount (int): required amoutn to cover transaction fees.
+            required_amount (int): required amount to cover transaction fees.
         Returns:
             UTxO: utxo
         """

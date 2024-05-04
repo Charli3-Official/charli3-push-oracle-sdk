@@ -1,13 +1,13 @@
-import pytest
+import asyncio
 import os
 
-import asyncio
+import pytest
 from retry import retry
+
+from scripts.cli_common import load_plutus_script
 
 from .base import TEST_RETRIES
 from .owner_actions import OracleOwnerActions
-
-from scripts.cli_common import load_plutus_script
 
 
 @pytest.mark.order(2)

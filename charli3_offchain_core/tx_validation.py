@@ -1,22 +1,24 @@
 from typing import List, Optional
+
 from pycardano import (
-    Transaction,
+    Address,
+    MultiAsset,
     Network,
     PaymentVerificationKey,
-    Address,
-    UTxO,
-    MultiAsset,
-    VerificationKeyHash,
+    Transaction,
     TransactionId,
+    UTxO,
+    VerificationKeyHash,
 )
-from charli3_offchain_core.utils.logging_config import logging
+
+from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.datums import AggDatum
 from charli3_offchain_core.oracle_checks import (
     check_type,
     filter_utxos_by_asset,
     filter_utxos_by_currency,
 )
-from charli3_offchain_core.chain_query import ChainQuery
-from charli3_offchain_core.datums import AggDatum
+from charli3_offchain_core.utils.logging_config import logging
 
 logger = logging.getLogger("Tx-Validation")
 

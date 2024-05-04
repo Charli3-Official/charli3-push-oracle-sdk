@@ -1,19 +1,22 @@
 """Implementing Oracle checks and filters"""
+
 from typing import List, Tuple
+
 from pycardano import (
-    UTxO,
-    MultiAsset,
+    Address,
+    AssetName,
     DatumHash,
     IndefiniteList,
+    MultiAsset,
     ScriptHash,
-    AssetName,
-    Address,
+    UTxO,
 )
+
 from charli3_offchain_core.datums import (
-    NodeDatum,
-    OracleDatum,
     AggDatum,
+    NodeDatum,
     Nothing,
+    OracleDatum,
     RewardDatum,
 )
 from charli3_offchain_core.utils.logging_config import logging

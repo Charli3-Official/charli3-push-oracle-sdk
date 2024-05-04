@@ -1,11 +1,12 @@
-import pytest
-
 import asyncio
+
+import pytest
 from retry import retry
+
+from charli3_offchain_core.mint import Mint
 
 from .base import TEST_RETRIES
 from .owner_actions import OracleOwnerActions
-from charli3_offchain_core.mint import Mint
 
 
 @pytest.mark.order(3)

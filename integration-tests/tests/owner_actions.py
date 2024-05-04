@@ -1,7 +1,8 @@
 """Oracle Owner Actions Class"""
 
 from charli3_offchain_core.oracle_owner import OracleOwner
-from .base import TestBase, MultisigTestBase
+
+from .base import MultisigTestBase, TestBase
 
 
 class OracleOwnerActions(TestBase):

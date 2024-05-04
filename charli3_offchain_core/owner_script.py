@@ -1,13 +1,16 @@
 """Oracle Owner NFT minting script"""
-from typing import Tuple, List
+
+from typing import List, Tuple
+
 from pycardano import (
-    VerificationKeyHash,
-    ScriptAll,
-    ScriptPubkey,
-    NativeScript,
     InvalidBefore,
+    NativeScript,
+    ScriptAll,
     ScriptNofK,
+    ScriptPubkey,
+    VerificationKeyHash,
 )
+
 from charli3_offchain_core.chain_query import ChainQuery
 
 

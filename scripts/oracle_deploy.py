@@ -1,40 +1,42 @@
 """Deployment of the oracle contract  on Cardano blockchain"""
 
-from typing import Tuple
 import asyncio
 import os
 import subprocess
-import yaml
+from typing import Tuple
+
 import click
+import yaml
 from pycardano import (
-    Network,
-    HDWallet,
-    MultiAsset,
     Address,
-    Transaction,
-    PaymentVerificationKey,
-    ExtendedSigningKey,
-    ScriptHash,
     AssetName,
-    PlutusV2Script,
-    IndefiniteList,
     BlockFrostChainContext,
-    VerificationKeyHash,
+    ExtendedSigningKey,
+    HDWallet,
+    IndefiniteList,
+    MultiAsset,
+    Network,
     OgmiosChainContext,
+    PaymentVerificationKey,
+    PlutusV2Script,
+    ScriptHash,
+    Transaction,
+    VerificationKeyHash,
 )
+
 from charli3_offchain_core.chain_query import ChainQuery
-from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.datums import OraclePlatform, OracleSettings, PriceRewards
 from charli3_offchain_core.oracle_start import OracleStart
-from charli3_offchain_core.datums import OracleSettings, PriceRewards, OraclePlatform
+from charli3_offchain_core.owner_script import OwnerScript
+from charli3_offchain_core.tx_validation import TxValidationException, TxValidator
 from charli3_offchain_core.utils.logging_config import logging
-from charli3_offchain_core.tx_validation import TxValidator, TxValidationException
 from scripts.cli_common import (
-    collect_multisig_pkhs,
-    load_plutus_script,
-    write_tx_to_file,
-    read_tx_from_file,
     COLOR_DEFAULT,
     COLOR_RED,
+    collect_multisig_pkhs,
+    load_plutus_script,
+    read_tx_from_file,
+    write_tx_to_file,
 )
 
 logger = logging.getLogger("oracle_deploy")

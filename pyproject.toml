@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "charli3-offchain-core"
-version = "1.6.5"
+version = "1.6.6"
 description = "Offchain core Python package for Charli3"
 authors = ["Deep Bhatt <deep.bhatt@charli3.io>"]
 readme = "README.md"
@@ -15,12 +15,15 @@ pytest = "^7.2.1"
 pytest-asyncio = "^0.20.3"
 pytest-order = "^1.1.0"
 python-json-logger = "^2.0.7"
+pre-commit = "^3.7.0"
 
 [tool.poetry.group.dev.dependencies]
-pylint = "^2.17.4"
-black = "^23.3.0"
-ruff = "^0.0.277"
+pylint = "^3.1.0"
+black = "^24.4.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"

@@ -1,23 +1,31 @@
 """script to mint tokens with native script"""
+
+import yaml
 from pycardano import (
-    Network,
     Address,
-    PaymentVerificationKey,
-    HDWallet,
+    BlockFrostChainContext,
     ExtendedSigningKey,
+    HDWallet,
     MultiAsset,
+    Network,
+    PaymentVerificationKey,
     TransactionBuilder,
 )
-import yaml
-from charli3_offchain_core.owner_script import OwnerScript
+
 from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.owner_script import OwnerScript
 
 network = Network.TESTNET
-chain_query = ChainQuery(
-    "YOUR_TOKEN_ID_HERE",
-    base_url="https://cardano-preprod.blockfrost.io/api",
+blockfrost_base_url = "https://cardano-preprod.blockfrost.io/api"
+blockfrost_project_id = "YOUR_TOKEN_ID_HERE"
+blockfrost_context = BlockFrostChainContext(
+    blockfrost_project_id,
+    base_url=blockfrost_base_url,
 )
 
+context = ChainQuery(
+    blockfrost_context,
+)
 with open("oracle_deploy.yml", "r") as ymlfile:
     config = yaml.safe_load(ymlfile)
 
@@ -35,16 +43,16 @@ stake_vk = PaymentVerificationKey.from_primitive(stake_public_key)
 
 extended_signing_key = ExtendedSigningKey.from_hdwallet(hdwallet_spend)
 owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network)
-owner_minting_script = OwnerScript(chain_query, is_mock_script=True)
+owner_minting_script = OwnerScript(context, is_mock_script=True)
 
 
 def submit_tx_builder(tx_builder: TransactionBuilder):
     """adds collateral and signers to tx , sign and submit tx."""
-    collateral_utxo = chain_query.find_collateral(owner_addr)
+    collateral_utxo = context.find_collateral(owner_addr, 9000000)
 
     if collateral_utxo is None:
-        chain_query.create_collateral(owner_addr, extended_signing_key)
-        collateral_utxo = chain_query.find_collateral(owner_addr)
+        context.create_collateral(owner_addr, extended_signing_key, 9000000)
+        collateral_utxo = context.find_collateral(owner_addr, 9000000)
 
     tx_builder.collaterals.append(collateral_utxo)
 
@@ -53,7 +61,7 @@ def submit_tx_builder(tx_builder: TransactionBuilder):
         change_address=owner_addr,
         collateral_change_address=owner_addr,
     )
-    chain_query.submit_tx_with_print(signed_tx)
+    context.submit_tx_with_print(signed_tx)
 
 
 script_start_slot, owner_script = owner_minting_script.create_owner_script()
@@ -64,7 +72,7 @@ c3_tokens = MultiAsset.from_primitive(
     {owner_script_hash.payload: {b"TestC3": 1_000_000}}
 )
 
-builder = TransactionBuilder(chain_query.context)
+builder = TransactionBuilder(context.context)
 
 # Required since owner script is InvalidBefore type
 builder.validity_start = script_start_slot

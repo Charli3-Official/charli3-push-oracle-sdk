@@ -2,43 +2,45 @@
 
 import time
 from copy import deepcopy
-from typing import List, Union, Tuple, Optional
+from typing import List, Optional, Tuple, Union
+
 from pycardano import (
-    Network,
     Address,
-    PaymentVerificationKey,
-    PaymentSigningKey,
-    ExtendedSigningKey,
-    AssetName,
-    TransactionOutput,
-    TransactionBuilder,
-    Redeemer,
     Asset,
-    MultiAsset,
-    UTxO,
-    ScriptHash,
-    Value,
-    TransactionInput,
-    Transaction,
+    AssetName,
     BlockFrostChainContext,
+    ExtendedSigningKey,
+    MultiAsset,
+    Network,
+    PaymentSigningKey,
+    PaymentVerificationKey,
+    Redeemer,
+    ScriptHash,
+    Transaction,
+    TransactionBuilder,
+    TransactionInput,
+    TransactionOutput,
+    UTxO,
+    Value,
 )
+
+from charli3_offchain_core.aggregate_conditions import aggregation_conditions
+from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.datums import (
-    NodeDatum,
-    PriceFeed,
-    DataFeed,
     AggDatum,
+    DataFeed,
+    NodeDatum,
     OracleDatum,
     PriceData,
+    PriceFeed,
     RewardDatum,
 )
-from charli3_offchain_core.redeemers import NodeUpdate, Aggregate, NodeCollect
-from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_checks import (
+    c3_get_rate,
     check_utxo_asset_balance,
     get_oracle_utxos_with_datums,
-    c3_get_rate,
 )
-from charli3_offchain_core.aggregate_conditions import aggregation_conditions
+from charli3_offchain_core.redeemers import Aggregate, NodeCollect, NodeUpdate
 from charli3_offchain_core.utils.logging_config import logging
 
 logger = logging.getLogger("Node")
@@ -121,7 +123,8 @@ class Node:
                     self.reference_script_input,
                     self.oracle_script_hash,
                 )
-                if self.reference_script_input and isinstance(self.context, BlockFrostChainContext)
+                if self.reference_script_input
+                and isinstance(self.context, BlockFrostChainContext)
                 else None
             )
 
@@ -243,7 +246,8 @@ class Node:
                         self.reference_script_input,
                         self.oracle_script_hash,
                     )
-                    if self.reference_script_input and isinstance(self.context, BlockFrostChainContext)
+                    if self.reference_script_input
+                    and isinstance(self.context, BlockFrostChainContext)
                     else None
                 )
 
@@ -405,7 +409,8 @@ class Node:
                 self.reference_script_input,
                 self.oracle_script_hash,
             )
-            if self.reference_script_input and isinstance(self.context, BlockFrostChainContext)
+            if self.reference_script_input
+            and isinstance(self.context, BlockFrostChainContext)
             else None
         )
 

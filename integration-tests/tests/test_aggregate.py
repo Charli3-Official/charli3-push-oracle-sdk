@@ -1,16 +1,17 @@
-import pytest
-
 import asyncio
 import time
-from retry import retry
 from typing import List
+
+import pytest
 from pycardano import UTxO
+from retry import retry
+
+from charli3_offchain_core.datums import NodeDatum, OracleDatum
+from charli3_offchain_core.node import Node
+from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
 
 from .base import TEST_RETRIES
 from .owner_actions import OracleOwnerActions
-from charli3_offchain_core.datums import OracleDatum, NodeDatum
-from charli3_offchain_core.oracle_checks import filter_utxos_by_asset
-from charli3_offchain_core.node import Node
 
 
 @pytest.mark.order(7)
@@ -22,7 +23,7 @@ class TestAggregate(OracleOwnerActions):
     @pytest.mark.asyncio
     async def test_node_updates(self):
         nodes = []
-        # Aggregation with 3 nodes because of memmory limitations
+        # Aggregation with 3 nodes because of memory limitations
         for i in range(1, 4):
             skey, vkey = self.wallet_keys[i]
             node = Node(

@@ -1,55 +1,58 @@
 """Oracle Owner contract transactions class"""
+
 from copy import deepcopy
-from typing import List, Optional, Tuple, Union, Literal
+from typing import List, Literal, Optional, Tuple, Union
+
 from pycardano import (
-    Network,
-    PaymentSigningKey,
     Address,
-    PaymentVerificationKey,
-    Value,
-    PlutusV2Script,
-    AssetName,
     Asset,
-    TransactionOutput,
-    TransactionBuilder,
-    Redeemer,
-    plutus_script_hash,
-    MultiAsset,
-    UTxO,
-    PaymentExtendedSigningKey,
+    AssetName,
     ExtendedSigningKey,
-    VerificationKeyHash,
-    ScriptHash,
+    MultiAsset,
     NativeScript,
-    TransactionInput,
+    Network,
+    PaymentExtendedSigningKey,
+    PaymentSigningKey,
+    PaymentVerificationKey,
+    PlutusV2Script,
+    Redeemer,
+    ScriptHash,
     Transaction,
+    TransactionBuilder,
+    TransactionInput,
+    TransactionOutput,
+    UTxO,
+    Value,
+    VerificationKeyHash,
+    plutus_script_hash,
 )
+
+from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.datums import (
-    NodeDatum,
     AggDatum,
-    OracleSettings,
+    NodeDatum,
     NodeState,
     Nothing,
     OracleDatum,
+    OracleSettings,
     PriceData,
     RewardDatum,
     RewardInfo,
 )
+from charli3_offchain_core.oracle_checks import (
+    check_node_exists,
+    check_type,
+    filter_utxos_by_asset,
+    get_node_own_utxo,
+)
 from charli3_offchain_core.redeemers import (
-    UpdateSettings,
+    AddFunds,
+    AddNodes,
     MintToken,
     OracleClose,
     PlatformCollect,
-    AddNodes,
     RemoveNodes,
-    AddFunds,
-)
-from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
-from charli3_offchain_core.oracle_checks import (
-    filter_utxos_by_asset,
-    check_node_exists,
-    get_node_own_utxo,
-    check_type,
+    UpdateSettings,
 )
 from charli3_offchain_core.utils.logging_config import logging
 
@@ -251,7 +254,7 @@ class OracleOwner:
                 updated_reward_utxo_output=updated_reward_utxo_output,
                 redeemer=remove_redeemer,
             )
-            # Hanlde removing node payouts from rewardstate
+            # Handle removing node payouts from rewardstate
             for node in remove_nodes_info:
                 if node.reward_amount > 0:
                     c3_asset = MultiAsset(
@@ -749,9 +752,9 @@ class OracleOwner:
         node_nfts = MultiAsset.from_primitive(
             {
                 self.nft_hash.payload: {
-                    b"NodeFeed": eligible_nodes
-                    if operation == "add"
-                    else -eligible_nodes
+                    b"NodeFeed": (
+                        eligible_nodes if operation == "add" else -eligible_nodes
+                    )
                 }
             }
         )

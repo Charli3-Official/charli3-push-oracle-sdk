@@ -1,22 +1,25 @@
 """offchain code containing mint class"""
+
 from dataclasses import dataclass
+
 from pycardano import (
-    Network,
     Address,
-    PaymentVerificationKey,
-    PaymentSigningKey,
-    TransactionOutput,
-    TransactionBuilder,
-    Redeemer,
-    Value,
-    MultiAsset,
-    PlutusV2Script,
-    plutus_script_hash,
-    PlutusData,
-    AuxiliaryData,
     AlonzoMetadata,
+    AuxiliaryData,
     Metadata,
+    MultiAsset,
+    Network,
+    PaymentSigningKey,
+    PaymentVerificationKey,
+    PlutusData,
+    PlutusV2Script,
+    Redeemer,
+    TransactionBuilder,
+    TransactionOutput,
+    Value,
+    plutus_script_hash,
 )
+
 from charli3_offchain_core.chain_query import ChainQuery
 
 

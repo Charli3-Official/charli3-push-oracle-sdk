@@ -1,37 +1,40 @@
 """Start oracle by submitting a reference script and minting its NFT"""
-from typing import Optional, Union, List
+
+from typing import List, Optional, Union
+
 from pycardano import (
-    Network,
     Address,
-    Transaction,
-    PaymentVerificationKey,
-    VerificationKeyHash,
-    ExtendedSigningKey,
-    PaymentSigningKey,
-    TransactionOutput,
-    TransactionBuilder,
-    Value,
-    MultiAsset,
-    PlutusV2Script,
-    plutus_script_hash,
-    ScriptHash,
-    AssetName,
     Asset,
+    AssetName,
+    ExtendedSigningKey,
     IndefiniteList,
+    MultiAsset,
+    Network,
+    PaymentSigningKey,
+    PaymentVerificationKey,
+    PlutusV2Script,
+    ScriptHash,
+    Transaction,
+    TransactionBuilder,
+    TransactionOutput,
+    Value,
+    VerificationKeyHash,
+    plutus_script_hash,
 )
+
+from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.datums import (
-    NodeDatum,
-    OracleDatum,
     AggDatum,
-    NodeState,
-    OracleSettings,
     AggState,
+    NodeDatum,
+    NodeState,
     Nothing,
-    RewardDatum,
+    OracleDatum,
     OracleReward,
+    OracleSettings,
+    RewardDatum,
     RewardInfo,
 )
-from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.owner_script import OwnerScript
 
 
