@@ -158,10 +158,10 @@ def check_utxo_asset_balance(
     if input_utxo.output.amount.multi_asset is None:
         return False
 
-    if input_utxo.output.amount.multi_asset[asset_policy_id] is None:
+    if input_utxo.output.amount.multi_asset.get(asset_policy_id) is None:
         return False
 
-    if input_utxo.output.amount.multi_asset[asset_policy_id][token_name] is None:
+    if input_utxo.output.amount.multi_asset[asset_policy_id].get(token_name) is None:
         return False
 
     # Check if input UTxO has at least the minimum required balance
