@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "charli3-offchain-core"
-version = "1.6.6"
+version = "1.6.7"
 description = "Offchain core Python package for Charli3"
 authors = ["Deep Bhatt <deep.bhatt@charli3.io>"]
 readme = "README.md"
