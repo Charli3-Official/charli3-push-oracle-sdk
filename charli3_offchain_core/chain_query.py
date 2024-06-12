@@ -25,8 +25,8 @@ from pycardano import (
     plutus_script_hash,
 )
 
-from charli3_offchain_core.datums import NodeDatum
 from charli3_offchain_core.backend.kupo import KupoContext
+from charli3_offchain_core.datums import NodeDatum
 from charli3_offchain_core.utils.exceptions import CollateralException
 from charli3_offchain_core.utils.logging_config import logging
 
