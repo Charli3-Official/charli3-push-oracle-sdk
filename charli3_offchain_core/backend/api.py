@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import aiohttp
 
-from ..utils.decimal_encoder import DecimalEncoder
+from charli3_offchain_core.utils.decimal_encoder import DecimalEncoder
 
 logger = logging.getLogger("api")
 
