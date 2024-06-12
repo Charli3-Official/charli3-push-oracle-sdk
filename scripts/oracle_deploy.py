@@ -2,11 +2,11 @@
 
 import asyncio
 import os
-import ogmios
 import subprocess
 from typing import Tuple
 
 import click
+import ogmios
 import yaml
 from pycardano import (
     Address,

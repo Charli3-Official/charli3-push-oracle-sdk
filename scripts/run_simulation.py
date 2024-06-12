@@ -1,9 +1,9 @@
 """Run simulation of the C3 protocol."""
 
-import ogmios
 import asyncio
 from typing import Union
 
+import ogmios
 import yaml
 from pycardano import (
     Address,
