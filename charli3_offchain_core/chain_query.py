@@ -39,7 +39,7 @@ class ChainQuery:
         self,
         blockfrost_context: BlockFrostChainContext = None,
         ogmios_context: OgmiosChainContext = None,
-        oracle_address: str = None,
+        oracle_address: Optional[str] = None,
     ):
         if blockfrost_context is None and ogmios_context is None:
             raise ValueError("At least one of the chain contexts must be provided.")
@@ -585,6 +585,11 @@ class StagedTxSubmitter(ChainQuery):
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
         """
         signature = signing_key.sign(tx.transaction_body.hash())
+
+        # Initialize vkey_witnesses if it's None
+        if tx.transaction_witness_set.vkey_witnesses is None:
+            tx.transaction_witness_set.vkey_witnesses = []
+
         tx.transaction_witness_set.vkey_witnesses.append(
             VerificationKeyWitness(signing_key.to_verification_key(), signature)
         )

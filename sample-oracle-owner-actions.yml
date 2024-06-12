@@ -11,6 +11,7 @@ chain_query:
   ogmios:
     ws_url: # ws://ogmios_url
     kupo_url: # http://kupo_url
+    pogmios: # False
 
 oracle_owner:
   oracle_addr: "addr_test1wp6kt5etqmudy6pwhdp8g97ydt47w9znthu7ws9ar0rmptgkn2qzy"
