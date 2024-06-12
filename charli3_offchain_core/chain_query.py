@@ -26,6 +26,7 @@ from pycardano import (
 )
 
 from charli3_offchain_core.datums import NodeDatum
+from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.utils.exceptions import CollateralException
 from charli3_offchain_core.utils.logging_config import logging
 
@@ -40,10 +41,12 @@ class ChainQuery:
         blockfrost_context: BlockFrostChainContext = None,
         ogmios_context: OgmiosChainContext = None,
         oracle_address: Optional[str] = None,
+        kupo_context: Optional[KupoContext] = None,
     ):
         if blockfrost_context is None and ogmios_context is None:
             raise ValueError("At least one of the chain contexts must be provided.")
 
+        self.kupo_context = kupo_context
         self.blockfrost_context = blockfrost_context
         self.ogmios_context = ogmios_context
         self.oracle_address = oracle_address
