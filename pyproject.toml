@@ -17,6 +17,7 @@ pytest-order = "^1.1.0"
 python-json-logger = "^2.0.7"
 pre-commit = "^3.7.0"
 ogmios = "^1.0.6"
+aiohttp = "^3.8.4"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^3.1.0"

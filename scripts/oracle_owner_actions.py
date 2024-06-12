@@ -113,7 +113,9 @@ def setup(ctx, config_file):
         if ogmios_config.get("pogmios"):
             _, ws_string = ogmios_ws_url.split("ws://")
             ws_url, port = ws_string.split(":")
-            ogmios_context = ogmios.OgmiosChainContext(ws_url, int(port))
+            ogmios_context = ogmios.OgmiosChainContext(
+                host=ws_url, port=int(port), network=network
+            )
         else:
             ogmios_context = OgmiosChainContext(
                 network=network,
