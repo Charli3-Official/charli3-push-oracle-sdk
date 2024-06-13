@@ -144,9 +144,9 @@ class KupoContext(Api):
                 script = None
                 script_hash = result.get("script_hash", None)
                 if script_hash:
-                    result = "/scripts/" + script_hash
-                    kupo_script_url = result.json
-                    script = await self._get(path=kupo_script_url)
+                    kupo_script_url = "/scripts/" + script_hash
+                    script_resp = await self._get(path=kupo_script_url)
+                    script = script_resp.json
                     if script["language"] == "plutus:v2":
                         script = pyc.PlutusV2Script(
                             bytes.fromhex(script["script"])
