@@ -56,6 +56,8 @@ def setup(ctx, config_file):
     with open(config_file, "r", encoding="utf-8") as f:
         oracle_owner_config = yaml.safe_load(f)
 
+    spend_vk, stake_vk, spend_sk = None, None, None
+
     if oracle_owner_config["MNEMONIC_24"]:
         MNEMONIC_24 = oracle_owner_config["MNEMONIC_24"]
         hdwallet = HDWallet.from_mnemonic(MNEMONIC_24)
