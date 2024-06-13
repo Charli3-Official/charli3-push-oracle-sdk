@@ -563,7 +563,7 @@ class OracleOwner:
         """build's partial reference script tx."""
 
         # The ADA amount required to cover the creation of the reference script.
-        script_transaction_fee_amount = 64000000
+        script_transaction_fee_amount = 66000000
 
         if not oracle_script:
             oracle_script = self.chainquery.get_plutus_script(self.oracle_script_hash)
