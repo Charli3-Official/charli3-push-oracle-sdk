@@ -2,6 +2,8 @@
 
 This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It now leverages the charli3-offchain-core package, which contains shared code that is used across different private repositories of the Charli3 oracle network.
 
+**Note**: The following demo was tested with Cardano-node v8.9.3, Ogmios v6.4.0, and Kupo v2.8.0. Older versions may not work properly.
+
 ### Compatible charli3-oracle-prototype Branches
 
 - [main](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/main)

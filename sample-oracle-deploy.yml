@@ -10,7 +10,6 @@ chain_query:
   ogmios:
     ws_url: # ws://ogmios_url
     kupo_url: # http://kupo_url
-    pogmios: # False
 
 c3_token_hash: "436941ead56c61dbf9b92b5f566f7d5b9cac08f8c957f28f0bd60d4b"
 c3_token_name: "PAYMENTTOKEN"
