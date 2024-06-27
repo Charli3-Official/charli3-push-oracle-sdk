@@ -8,7 +8,6 @@ chain_query:
   ogmios:
     ws_url: # ws://ogmios_url
     kupo_url: # http://kupo_url
-    pogmios: # False
 
 oracle_info:
   oracle_addr: "addr_test1wpj8h52fqfvw98664ewc2d9lxq3yxjx8jvx7t6vntefu23gq6fcfx"
