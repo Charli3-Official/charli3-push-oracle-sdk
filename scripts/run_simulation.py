@@ -53,18 +53,11 @@ if (
 if ogmios_config and ogmios_config.get("ws_url") and ogmios_config.get("kupo_url"):
     ogmios_ws_url = ogmios_config["ws_url"]
     kupo_url = ogmios_config.get("kupo_url")
-    if ogmios_config.get("pogmios"):
-        _, ws_string = ogmios_ws_url.split("ws://")
-        ws_url, port = ws_string.split(":")
-        ogmios_context = ogmios.OgmiosChainContext(
-            host=ws_url, port=int(port), network=network
-        )
-    else:
-        ogmios_context = OgmiosChainContext(
-            network=network,
-            ws_url=ogmios_ws_url,
-            kupo_url=kupo_url,
-        )
+    _, ws_string = ogmios_ws_url.split("ws://")
+    ws_url, port = ws_string.split(":")
+    ogmios_context = ogmios.OgmiosChainContext(
+        host=ws_url, port=int(port), network=network
+    )
 
 chain_query = ChainQuery(
     blockfrost_context=blockfrost_context, ogmios_context=ogmios_context
