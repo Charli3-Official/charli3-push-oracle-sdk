@@ -23,8 +23,8 @@ from pycardano import (
     VerificationKeyHash,
 )
 
-from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.backend.kupo import KupoContext
+from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
 from charli3_offchain_core.tx_validation import TxValidationException, TxValidator
@@ -95,6 +95,7 @@ def setup(ctx, config_file):
 
     blockfrost_context = None
     ogmios_context = None
+    kupo_context = None
 
     if (
         blockfrost_config
