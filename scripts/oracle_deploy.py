@@ -24,8 +24,8 @@ from pycardano import (
     VerificationKeyHash,
 )
 
-from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.backend.kupo import KupoContext
+from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.datums import OraclePlatform, OracleSettings, PriceRewards
 from charli3_offchain_core.oracle_start import OracleStart
 from charli3_offchain_core.owner_script import OwnerScript
@@ -182,6 +182,7 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
 
     blockfrost_context = None
     ogmios_context = None
+    kupo_context = None
 
     if (
         blockfrost_config

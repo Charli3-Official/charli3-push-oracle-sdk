@@ -5,6 +5,7 @@ import functools
 from typing import List, Optional, Tuple, Union
 
 import cbor2
+import ogmios
 from blockfrost import ApiError
 from pycardano import (
     Address,
@@ -25,7 +26,6 @@ from pycardano import (
     VerificationKeyWitness,
     plutus_script_hash,
 )
-import ogmios
 
 from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.datums import NodeDatum

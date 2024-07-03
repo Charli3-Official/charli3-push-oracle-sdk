@@ -19,8 +19,8 @@ from pycardano import (
     TransactionInput,
 )
 
-from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.backend.kupo import KupoContext
+from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.node import Node
 
 with open("run-node-simulator.yml", "r", encoding="utf-8") as stream:
@@ -37,6 +37,7 @@ ogmios_config = chain_query_config.get("ogmios")
 
 blockfrost_context = None  # pylint: disable=invalid-name
 ogmios_context = None  # pylint: disable=invalid-name
+kupo_context = None  # pylint: disable=invalid-name
 
 if (
     blockfrost_config
