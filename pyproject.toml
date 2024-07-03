@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "charli3-offchain-core"
-version = "1.8.1"
+version = "1.8.2"
 description = "Offchain core Python package for Charli3"
 authors = ["Deep Bhatt <deep.bhatt@charli3.io>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pycardano = "^0.11.1"
+pycardano = "^0.10.0"
 retry = "^0.9.2"
 pyyaml = "^6.0"
 click = "^8.1.3"

@@ -1,6 +1,7 @@
 """ This module contains the ChainQuery class, which is used to query the blockchain."""
 
 import asyncio
+import functools
 from typing import List, Optional, Tuple, Union
 
 import cbor2
@@ -24,6 +25,7 @@ from pycardano import (
     VerificationKeyWitness,
     plutus_script_hash,
 )
+import ogmios
 
 from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.datums import NodeDatum
@@ -51,6 +53,24 @@ class ChainQuery:
         self.ogmios_context = ogmios_context
         self.oracle_address = oracle_address
         self.context = blockfrost_context if blockfrost_context else ogmios_context
+
+        self._datum_cache = {}
+
+        if kupo_context and (
+            isinstance(self.context, ogmios.OgmiosChainContext)
+            or isinstance(self.context, BlockFrostChainContext)
+        ):
+            self.context._datum_cache = self._datum_cache
+            self.context._kupo_url = kupo_context.api_url
+            self.context._get_datum_from_kupo = functools.partial(
+                OgmiosChainContext._get_datum_from_kupo, self.context
+            )
+            self.context._extract_asset_info = functools.partial(
+                OgmiosChainContext._extract_asset_info, self.context
+            )
+            self.context._utxos = functools.partial(
+                OgmiosChainContext._utxos_kupo, self.context
+            )
 
     def _get_datum(self, utxo):
         """get datum for UTxO"""

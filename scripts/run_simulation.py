@@ -13,7 +13,6 @@ from pycardano import (
     HDWallet,
     MultiAsset,
     Network,
-    OgmiosChainContext,
     PaymentVerificationKey,
     ScriptHash,
     TransactionId,
@@ -21,6 +20,7 @@ from pycardano import (
 )
 
 from charli3_offchain_core.chain_query import ChainQuery
+from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.node import Node
 
 with open("run-node-simulator.yml", "r", encoding="utf-8") as stream:
@@ -58,9 +58,12 @@ if ogmios_config and ogmios_config.get("ws_url") and ogmios_config.get("kupo_url
     ogmios_context = ogmios.OgmiosChainContext(
         host=ws_url, port=int(port), network=network
     )
+    kupo_context = KupoContext(kupo_url)
 
 chain_query = ChainQuery(
-    blockfrost_context=blockfrost_context, ogmios_context=ogmios_context
+    blockfrost_context=blockfrost_context,
+    ogmios_context=ogmios_context,
+    kupo_context=kupo_context,
 )
 nft_hash = config["oracle_info"]["minting_nft_hash"]
 
