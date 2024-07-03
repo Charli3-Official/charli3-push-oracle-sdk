@@ -17,7 +17,6 @@ from pycardano import (
     IndefiniteList,
     MultiAsset,
     Network,
-    OgmiosChainContext,
     PaymentVerificationKey,
     PlutusV2Script,
     ScriptHash,
@@ -25,6 +24,7 @@ from pycardano import (
     VerificationKeyHash,
 )
 
+from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.datums import OraclePlatform, OracleSettings, PriceRewards
 from charli3_offchain_core.oracle_start import OracleStart
@@ -182,6 +182,7 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
 
     blockfrost_context = None
     ogmios_context = None
+    kupo_context = None
 
     if (
         blockfrost_config
@@ -204,10 +205,12 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
         ogmios_context = ogmios.OgmiosChainContext(
             host=ws_url, port=int(port), network=network
         )
+        kupo_context = KupoContext(kupo_url)
 
     chain_query = ChainQuery(
         blockfrost_context=blockfrost_context,
         ogmios_context=ogmios_context,
+        kupo_context=kupo_context,
     )
 
     hdwallet = HDWallet.from_mnemonic(mnemonic_24)

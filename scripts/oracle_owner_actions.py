@@ -14,7 +14,6 @@ from pycardano import (
     HDWallet,
     MultiAsset,
     Network,
-    OgmiosChainContext,
     PaymentSigningKey,
     PaymentVerificationKey,
     ScriptHash,
@@ -24,6 +23,7 @@ from pycardano import (
     VerificationKeyHash,
 )
 
+from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.oracle_owner import OracleOwner
 from charli3_offchain_core.owner_script import OwnerScript
@@ -95,6 +95,7 @@ def setup(ctx, config_file):
 
     blockfrost_context = None
     ogmios_context = None
+    kupo_context = None
 
     if (
         blockfrost_config
@@ -117,8 +118,12 @@ def setup(ctx, config_file):
         ogmios_context = ogmios.OgmiosChainContext(
             host=ws_url, port=int(port), network=network
         )
+        kupo_context = KupoContext(kupo_url)
+
     chain_query = ChainQuery(
-        blockfrost_context=blockfrost_context, ogmios_context=ogmios_context
+        blockfrost_context=blockfrost_context,
+        ogmios_context=ogmios_context,
+        kupo_context=kupo_context,
     )
 
     owner_addr = Address(spend_vk.hash(), stake_vk.hash(), network)
