@@ -52,7 +52,10 @@ old_factory = logging.getLogRecordFactory()
 
 def _record_factory(*args, **kwargs):
     record = old_factory(*args, **kwargs)
-    record.level_color = LEVEL_COLORS[record.levelno // 10]
+    if record.levelno is not None:
+        record.level_color = LEVEL_COLORS[record.levelno // 10]
+    else:
+        record.level_color = LEVEL_COLORS[0]  # Default color for None levelno
     record.end_color = "\033[0m"
     return record
 
