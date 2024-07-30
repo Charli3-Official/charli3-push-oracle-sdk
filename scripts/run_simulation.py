@@ -122,7 +122,10 @@ if (
 c3_token_hash = ScriptHash.from_primitive(config["oracle_info"]["c3_token_hash"])
 c3_token_name = AssetName(config["oracle_info"]["c3_token_name"].encode())
 
-if "reference_script_input" in config["oracle_info"]:
+if (
+    "reference_script_input" in config["oracle_info"]
+    and chain_query.blockfrost_context is not None
+):
     reference_script_input = config["oracle_info"]["reference_script_input"]
     tx_id_hex, index = reference_script_input.split("#")
     tx_id = TransactionId(bytes.fromhex(tx_id_hex))
