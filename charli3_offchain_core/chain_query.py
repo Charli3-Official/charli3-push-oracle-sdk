@@ -2,7 +2,9 @@
 
 import asyncio
 import functools
-from typing import List, Optional, Tuple, Union
+import time
+from dataclasses import dataclass, field
+from typing import List, Literal, Mapping, Optional, Tuple, Union
 
 import cbor2
 import ogmios
@@ -11,10 +13,12 @@ from pycardano import (
     Address,
     BlockFrostChainContext,
     ExtendedSigningKey,
+    GenesisParameters,
     InsufficientUTxOBalanceException,
     OgmiosChainContext,
     PaymentSigningKey,
     PlutusV2Script,
+    RawCBOR,
     ScriptHash,
     Transaction,
     TransactionBuilder,
@@ -35,6 +39,51 @@ from charli3_offchain_core.utils.logging_config import logging
 logger = logging.getLogger("ChainQuery")
 
 
+@dataclass
+class SlotConfig:
+    zero_time: int = field(metadata={"doc": "POSIX timestamp in milliseconds"})
+    zero_slot: int
+    slot_length: int = field(metadata={"doc": "milliseconds"})
+
+
+NetworkLiteral = Literal["MAINNET", "PREVIEW", "PREPROD"]
+
+
+def cardano_magic_to_network(network_magic: int) -> NetworkLiteral:
+    match network_magic:
+        case 764824073:
+            return "MAINNET"
+        case 1:
+            return "PREPROD"
+        case 2:
+            return "PREVIEW"
+        case _:
+            # return "MAINNET"
+            raise UnknownNetworkMagic(network_magic)
+
+
+# see https://github.com/Anastasia-Labs/lucid-evolution/blob/c81935fd75bd68c54d74b977bd3a431236b886d6/packages/plutus/src/time.ts#L8
+SLOT_CONFIG_NETWORK: Mapping[NetworkLiteral, SlotConfig] = {
+    "MAINNET": SlotConfig(
+        zero_time=1596059091000, zero_slot=4492800, slot_length=1000
+    ),  # Starting at Shelley era
+    "PREVIEW": SlotConfig(
+        zero_time=1666656000000, zero_slot=0, slot_length=1000
+    ),  # Starting at Shelley era
+    "PREPROD": SlotConfig(
+        zero_time=1654041600000 + 1728000000, zero_slot=86400, slot_length=1000
+    ),
+}
+
+
+class NoContextSetup(Exception):
+    pass
+
+
+class UnknownNetworkMagic(Exception):
+    pass
+
+
 class ChainQuery:
     """chainQuery methods"""
 
@@ -44,6 +93,7 @@ class ChainQuery:
         ogmios_context: OgmiosChainContext = None,
         oracle_address: Optional[str] = None,
         kupo_context: Optional[KupoContext] = None,
+        is_local_testnet: bool = False,
     ):
         if blockfrost_context is None and ogmios_context is None:
             raise ValueError("At least one of the chain contexts must be provided.")
@@ -53,6 +103,7 @@ class ChainQuery:
         self.ogmios_context = ogmios_context
         self.oracle_address = oracle_address
         self.context = blockfrost_context if blockfrost_context else ogmios_context
+        self.is_local_testnet = is_local_testnet
 
         self._datum_cache = {}
 
@@ -71,6 +122,64 @@ class ChainQuery:
             self.context._utxos = functools.partial(
                 OgmiosChainContext._utxos_kupo, self.context
             )
+
+    @property
+    def genesis_params(self) -> GenesisParameters:
+
+        if self.ogmios_context:
+            genesis_params = self.ogmios_context.genesis_param
+        elif self.blockfrost_context:
+            genesis_params = self.blockfrost_context.genesis_param
+        return genesis_params  # pylint: disable=E0606
+
+    @property
+    def last_block_slot(self) -> int:
+        if self.ogmios_context:
+            last_block_slot = self.ogmios_context.last_block_slot
+        elif self.blockfrost_context:
+            last_block_slot = self.blockfrost_context.last_block_slot
+        return last_block_slot  # pylint: disable=E0606
+
+    def get_current_posix_chain_time_ms(self) -> int:
+        if self.is_local_testnet:
+            return round(time.time_ns() * 1e-6)
+        genesis_params = self.genesis_params
+        network = cardano_magic_to_network(genesis_params.network_magic)
+        slot_config = SLOT_CONFIG_NETWORK[network]
+
+        ms_after_origin = (
+            self.last_block_slot - slot_config.zero_slot
+        ) * slot_config.slot_length
+
+        return slot_config.zero_time + ms_after_origin
+
+    async def get_metadata_cbor(
+        self, tx_id: TransactionId, slot: Optional[int]
+    ) -> Optional[RawCBOR]:
+        """get metadata cbor for TransactionId in Slot"""
+        if self.blockfrost_context:
+            response = self.blockfrost_context.api.transaction_metadata_cbor(
+                tx_id.to_cbor().hex()
+            ).json()
+            return RawCBOR(bytes.fromhex(response.metadata))
+        if self.kupo_context:
+            if not slot:
+                logger.error(
+                    "Slot number was not provided when retrieving metadata with Kupo."
+                )
+                return None
+            metadata_cbor = await self.kupo_context.get_metadata_cbor(tx_id, slot)
+            return metadata_cbor
+        logger.warning("No context present to retrieve metadata.")
+        return None
+
+    async def get_tip(self) -> int:
+        if self.blockfrost_context:
+            response = self.blockfrost_context.api.block_latest().json()
+            return response.slot
+        if self.ogmios_context:
+            return self.ogmios_context.last_block_slot
+        raise NoContextSetup
 
     def _get_datum(self, utxo):
         """get datum for UTxO"""
@@ -178,7 +287,7 @@ class ChainQuery:
             return self.blockfrost_context.utxos(str(address))
         if self.ogmios_context is not None:
             logger.info("Getting utxos from ogmios")
-            return self.ogmios_context.utxos(str(address))
+            return await self.kupo_context.utxos_kupo(str(address))
 
     async def process_common_inputs(
         self,

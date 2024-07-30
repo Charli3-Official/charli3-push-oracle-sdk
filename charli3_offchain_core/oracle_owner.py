@@ -112,7 +112,10 @@ class OracleOwner:
         self.network = network
         self.chainquery = chainquery
         self.staged_query = StagedTxSubmitter(
-            chainquery.blockfrost_context, chainquery.ogmios_context
+            chainquery.blockfrost_context,
+            chainquery.ogmios_context,
+            oracle_addr,
+            chainquery.kupo_context,
         )
         self.signing_key = signing_key
         self.verification_key = verification_key
@@ -159,14 +162,14 @@ class OracleOwner:
     ) -> Transaction:
         """Add nodes to oracle script."""
         pkhs = list(map(lambda x: bytes(VerificationKeyHash.from_primitive(x)), pkhs))
-        eligible_nodes = self._get_eligible_nodes(pkhs, operation="add")
+        eligible_nodes = await self._get_eligible_nodes(pkhs, operation="add")
 
         if not eligible_nodes:
             logger.error("No eligible nodes to add.")
             return
 
-        aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
-        reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
+        aggstate_utxo, aggstate_datum = await self._get_aggstate_utxo_and_datum()
+        reward_utxo, reward_datum = await self._get_reward_utxo_and_datum()
 
         if len(eligible_nodes) > 0:
             updated_aggstate_datum = self._add_nodes_to_aggstate(
@@ -208,14 +211,14 @@ class OracleOwner:
     ) -> Transaction:
         """Remove nodes from the oracle script."""
         pkhs = [bytes.fromhex(pkh) for pkh in pkhs]
-        eligible_nodes = self._get_eligible_nodes(pkhs, operation="remove")
+        eligible_nodes = await self._get_eligible_nodes(pkhs, operation="remove")
 
         if not eligible_nodes:
             logger.error("No eligible nodes to remove.")
             return
 
-        aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
-        reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
+        aggstate_utxo, aggstate_datum = await self._get_aggstate_utxo_and_datum()
+        reward_utxo, reward_datum = await self._get_reward_utxo_and_datum()
 
         if len(eligible_nodes) > 0:
             updated_aggstate_datum = self._remove_nodes_from_aggstate(
@@ -289,7 +292,7 @@ class OracleOwner:
         self, platform_multisig_pkhs: List[str], settings: OracleSettings
     ) -> Transaction:
         """edit settings of oracle script."""
-        aggstate_utxo, aggstate_datum = self._get_aggstate_utxo_and_datum()
+        aggstate_utxo, aggstate_datum = await self._get_aggstate_utxo_and_datum()
 
         if (
             settings != aggstate_datum.aggstate.ag_settings
@@ -318,15 +321,15 @@ class OracleOwner:
         else:
             logger.error("Settings not changed or modified osNodeList")
 
-    def get_oracle_settings(self) -> OracleSettings:
+    async def get_oracle_settings(self) -> OracleSettings:
         """get oracle settings from oracle script."""
-        _, aggstate_datum = self._get_aggstate_utxo_and_datum()
+        _, aggstate_datum = await self._get_aggstate_utxo_and_datum()
         return aggstate_datum.aggstate.ag_settings
 
     async def add_funds(self, funds: int):
         """add funds (payment token) to aggstate UTxO of oracle script."""
 
-        aggstate_utxo, _ = self._get_aggstate_utxo_and_datum()
+        aggstate_utxo, _ = await self._get_aggstate_utxo_and_datum()
 
         if funds > 0:
             # prepare datums, redeemers and new node utxos for eligible nodes
@@ -368,8 +371,8 @@ class OracleOwner:
     ) -> Transaction:
         """Collect oracle admin c3 rewards from oracle script."""
 
-        reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
-        aggstate_utxo, _ = self._get_aggstate_utxo_and_datum()
+        reward_utxo, reward_datum = await self._get_reward_utxo_and_datum()
+        aggstate_utxo, _ = await self._get_aggstate_utxo_and_datum()
 
         # check if platform reward is available
         if reward_datum.reward_state.platform_reward > 0:
@@ -429,7 +432,7 @@ class OracleOwner:
         oraclefeed_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.oracle_nft)[0]
         aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)[0]
 
-        reward_utxo, reward_datum = self._get_reward_utxo_and_datum()
+        reward_utxo, reward_datum = await self._get_reward_utxo_and_datum()
 
         if oraclefeed_utxo and aggstate_utxo and reward_utxo:
             # prepare datums, redeemers and new node utxos for eligible nodes
@@ -664,10 +667,12 @@ class OracleOwner:
         aggstate_datum.aggstate.ag_settings = settings
         return aggstate_datum
 
-    def _get_eligible_nodes(self, pkhs: List[bytes], operation: str) -> List[bytes]:
+    async def _get_eligible_nodes(
+        self, pkhs: List[bytes], operation: str
+    ) -> List[bytes]:
         """Get eligible nodes to add or remove."""
         eligible_nodes: List[bytes] = []
-        _, aggstate_datum = self._get_aggstate_utxo_and_datum()
+        _, aggstate_datum = await self._get_aggstate_utxo_and_datum()
         node_list = aggstate_datum.aggstate.ag_settings.os_node_list
 
         for node in pkhs:
@@ -679,16 +684,16 @@ class OracleOwner:
 
         return eligible_nodes
 
-    def _get_aggstate_utxo_and_datum(self) -> Tuple[UTxO, AggDatum]:
+    async def _get_aggstate_utxo_and_datum(self) -> Tuple[UTxO, AggDatum]:
         """Get aggstate utxo and datum."""
-        oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
+        oracle_utxos = await self.chainquery.get_utxos(self.oracle_addr)
         aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)[0]
         aggstate_datum: AggDatum = AggDatum.from_cbor(aggstate_utxo.output.datum.cbor)
         return aggstate_utxo, aggstate_datum
 
-    def _get_reward_utxo_and_datum(self) -> Tuple[UTxO, RewardDatum]:
+    async def _get_reward_utxo_and_datum(self) -> Tuple[UTxO, RewardDatum]:
         """Get reward utxo and datum."""
-        oracle_utxos = self.chainquery.context.utxos(self.oracle_addr)
+        oracle_utxos = await self.chainquery.get_utxos(self.oracle_addr)
         rewardstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.reward_nft)[0]
         rewardstate_datum: RewardDatum = RewardDatum.from_cbor(
             rewardstate_utxo.output.datum.cbor
