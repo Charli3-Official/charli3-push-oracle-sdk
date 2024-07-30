@@ -298,7 +298,7 @@ def create_reference_script(ctx, script_path):
 def mk_edit_settings(ctx):
     """Interactively create edit oracle settings tx."""
     oracle_owner: OracleOwner = ctx.obj["oracle_owner"]
-    ag_settings = oracle_owner.get_oracle_settings()
+    ag_settings = asyncio.run(oracle_owner.get_oracle_settings())
 
     SETTINGS_MAP = {
         "0": ("os_minimum_deposit", int),

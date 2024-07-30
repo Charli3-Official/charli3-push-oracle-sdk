@@ -58,7 +58,10 @@ class OracleStart:
         self.network = network
         self.chain_query = chain_query
         self.staged_query = StagedTxSubmitter(
-            chain_query.blockfrost_context, chain_query.ogmios_context
+            chain_query.blockfrost_context,
+            chain_query.ogmios_context,
+            None,
+            chain_query.kupo_context,
         )
         self.context = self.chain_query.context
         self.signing_key = signing_key

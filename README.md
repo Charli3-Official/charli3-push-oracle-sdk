@@ -205,7 +205,7 @@ Below are the available commands:
     python scripts/run_simulation.py
     ```
 
-4. The script will print the public key hash of each node it creates, perform the updates for each node, aggregate the oracle with last node, and collect reward for each node with a 20-second delay between each collection.
+4. The script will print the public key hash of each node it creates, perform the updates for each node, aggregate the oracle with last node, and collect reward for each node with a 20-second delay between each collection. Note that aggregation with only one node is not possible.
 
 # Run Integration Tests
 

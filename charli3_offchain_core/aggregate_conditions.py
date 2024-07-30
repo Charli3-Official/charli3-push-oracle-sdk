@@ -81,6 +81,9 @@ def check_feed_last_update(
             logger.error("Old aggregated feed")
             return False
 
+    logger.error("Node feed was not initialized")
+    return False
+
 
 def check_agg_time(oset: OracleSettings, ofeed: OracleDatum, curr_time: int) -> bool:
     """
@@ -223,6 +226,9 @@ def aggregation_conditions(
     if check_aggregator_permission(oset, pkh):
         valid_nodes = check_node_updates_condition(oset, ofeed, curr_time, nodes)
         if len(valid_nodes) > 0:
+            if len(valid_nodes) == 1:
+                logger.error("Aggregation with only one node is not possible")
+                return [], 0
             valid_nodes_with_consensus, agg_value = check_node_consensus_condition(
                 oset, valid_nodes
             )

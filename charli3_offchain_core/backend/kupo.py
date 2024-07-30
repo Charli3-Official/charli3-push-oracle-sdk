@@ -1,13 +1,13 @@
 """Kupo context to query on-chain data"""
 
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cbor2
 import pycardano as pyc
 from cachetools import LRUCache
 from pycardano.hash import TransactionId
 
-from . import Api
+from charli3_offchain_core.backend.api import Api
 
 
 class KupoContext(Api):
@@ -126,77 +126,108 @@ class KupoContext(Api):
         kupo_utxo_url = "/matches/" + address + "?unspent"
         results = await self._get(path=kupo_utxo_url)
 
-        utxos = []
+        if results.json is None:
+            raise AssertionError("Error")
+        utxos = await self._unpack_outputs(address, results.json)
+
+        return utxos
+
+    async def outputs_created_after(
+        self, address: str, created_after_slot: int
+    ) -> List[Tuple[pyc.UTxO, int]]:
+        """Get all UTxOs associated with an address with Kupo
+        together with absolute slot number they were created at.
+        Only fetch results that were created at and after the given slot,
+        sorted by slot most recent results are returned first.
+
+        Args:
+            address (str): An address encoded with bech32.
+            created_after_slot (int): Point after we get relevant results
+
+        Returns:
+            List[Tuple[pyc.UTxO, int]]: A list of UTxOs and their slot timestamps.
+        """
+        if self.api_url is None:
+            raise AssertionError(
+                "api_url object attribute has not been assigned properly."
+            )
+
+        kupo_utxo_url = (
+            "/matches/" + address + "?spent" + f"&created_after={created_after_slot}"
+        )
+        results = await self._get(path=kupo_utxo_url)
 
         if results.json is None:
             raise AssertionError("Error")
-        for result in results.json:
+        utxos = await self._unpack_outputs(address, results.json)
+
+        return utxos
+
+    async def _unpack_outputs(
+        self, address: str, api_response: List[Any]
+    ) -> List[Tuple[pyc.UTxO, int]]:
+        utxos: List[Tuple[pyc.UTxO, int]] = []
+
+        for result in api_response:
             tx_id = result["transaction_id"]
             index = result["output_index"]
 
             created_at_slot = result["created_at"]["slot_no"]
 
-            if result["spent_at"] is None:
-                tx_in = pyc.TransactionInput.from_primitive([tx_id, index])
+            tx_in = pyc.TransactionInput.from_primitive([tx_id, index])
 
-                lovelace_amount = result["value"]["coins"]
+            lovelace_amount = result["value"]["coins"]
 
-                script = None
-                script_hash = result.get("script_hash", None)
-                if script_hash:
-                    kupo_script_url = "/scripts/" + script_hash
-                    script_resp = await self._get(path=kupo_script_url)
-                    script = script_resp.json
-                    if script["language"] == "plutus:v2":
-                        script = pyc.PlutusV2Script(
-                            bytes.fromhex(script["script"])
-                        )  # noqa
-                        script = self._try_fix_script(script_hash, script)
-                    elif script["language"] == "plutus:v1":
-                        script = pyc.PlutusV1Script(
-                            bytes.fromhex(script["script"])
-                        )  # noqa
-                        script = self._try_fix_script(script_hash, script)
-                    else:
-                        raise ValueError("Unknown plutus script type")
-
-                datum = None
-                datum_hash = (
-                    pyc.DatumHash.from_primitive(result["datum_hash"])
-                    if result["datum_hash"]
-                    else None
-                )
-                if datum_hash and result.get("datum_type", "inline"):
-                    datum = await self._get_datum_from_kupo(result["datum_hash"])
-
-                if not result["value"]["assets"]:
-                    tx_out = pyc.TransactionOutput(
-                        pyc.Address.from_primitive(address),
-                        amount=lovelace_amount,
-                        datum_hash=datum_hash,
-                        datum=datum,
-                        script=script,
-                    )
+            script = None
+            script_hash = result.get("script_hash", None)
+            if script_hash:
+                kupo_script_url = "/scripts/" + script_hash
+                script_resp = await self._get(path=kupo_script_url)
+                script = script_resp.json
+                if script["language"] == "plutus:v2":
+                    script = pyc.PlutusV2Script(bytes.fromhex(script["script"]))  # noqa
+                    script = self._try_fix_script(script_hash, script)
+                elif script["language"] == "plutus:v1":
+                    script = pyc.PlutusV1Script(bytes.fromhex(script["script"]))  # noqa
+                    script = self._try_fix_script(script_hash, script)
                 else:
-                    multi_assets = pyc.MultiAsset()
+                    raise ValueError("Unknown plutus script type")
 
-                    for asset, quantity in result["value"]["assets"].items():
-                        policy_hex, policy, asset_name_hex = self._extract_asset_info(
-                            asset
-                        )
-                        multi_assets.setdefault(policy, pyc.Asset())[
-                            asset_name_hex
-                        ] = quantity
+            datum = None
+            datum_hash = (
+                pyc.DatumHash.from_primitive(result["datum_hash"])
+                if result["datum_hash"]
+                else None
+            )
+            if datum_hash and result.get("datum_type", "inline"):
+                datum = await self._get_datum_from_kupo(result["datum_hash"])
+                if datum:
+                    datum_hash = None
 
-                    tx_out = pyc.TransactionOutput(
-                        pyc.Address.from_primitive(result["address"]),
-                        amount=pyc.Value(lovelace_amount, multi_assets),
-                        datum_hash=datum_hash,
-                        datum=datum,
-                        script=script,
-                    )
-                utxos.append((pyc.UTxO(tx_in, tx_out), created_at_slot))
+            if not result["value"]["assets"]:
+                tx_out = pyc.TransactionOutput(
+                    pyc.Address.from_primitive(address),
+                    amount=lovelace_amount,
+                    datum_hash=datum_hash,
+                    datum=datum,
+                    script=script,
+                )
             else:
-                continue
+                multi_assets = pyc.MultiAsset()
+
+                for asset, quantity in result["value"]["assets"].items():
+                    policy_hex, policy, asset_name_hex = self._extract_asset_info(asset)
+                    multi_assets.setdefault(policy, pyc.Asset())[
+                        asset_name_hex
+                    ] = quantity
+
+                tx_out = pyc.TransactionOutput(
+                    pyc.Address.from_primitive(result["address"]),
+                    amount=pyc.Value(lovelace_amount, multi_assets),
+                    datum_hash=datum_hash,
+                    datum=datum,
+                    script=script,
+                )
+            utxos.append((pyc.UTxO(tx_in, tx_out), created_at_slot))
 
         return utxos
