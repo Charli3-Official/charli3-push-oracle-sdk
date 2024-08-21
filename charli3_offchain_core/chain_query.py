@@ -46,7 +46,7 @@ class SlotConfig:
     slot_length: int = field(metadata={"doc": "milliseconds"})
 
 
-NetworkLiteral = Literal["MAINNET", "PREVIEW", "PREPROD"]
+NetworkLiteral = Literal["MAINNET", "PREVIEW", "PREPROD", "CUSTOM"]
 
 
 def cardano_magic_to_network(network_magic: int) -> NetworkLiteral:
@@ -57,6 +57,8 @@ def cardano_magic_to_network(network_magic: int) -> NetworkLiteral:
             return "PREPROD"
         case 2:
             return "PREVIEW"
+        case 4:
+            return "CUSTOM"
         case _:
             # return "MAINNET"
             raise UnknownNetworkMagic(network_magic)
@@ -73,6 +75,7 @@ SLOT_CONFIG_NETWORK: Mapping[NetworkLiteral, SlotConfig] = {
     "PREPROD": SlotConfig(
         zero_time=1654041600000 + 1728000000, zero_slot=86400, slot_length=1000
     ),
+    "CUSTOM": SlotConfig(zero_time=0, zero_slot=0, slot_length=0),
 }
 
 
