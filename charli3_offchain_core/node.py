@@ -115,7 +115,7 @@ class Node:
 
             node_update_redeemer = Redeemer(NodeUpdate())
 
-            builder = TransactionBuilder(self.context, fee_buffer=250000)
+            builder = TransactionBuilder(self.context, fee_buffer=183540)
 
             script_utxo = (
                 await self.chain_query.get_reference_script_utxo(
