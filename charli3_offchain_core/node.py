@@ -115,7 +115,7 @@ class Node:
 
             node_update_redeemer = Redeemer(NodeUpdate())
 
-            builder = TransactionBuilder(self.context)
+            builder = TransactionBuilder(self.context, fee_buffer=250000)
 
             script_utxo = (
                 await self.chain_query.get_reference_script_utxo(
@@ -251,7 +251,7 @@ class Node:
                     else None
                 )
 
-                builder = TransactionBuilder(self.context)
+                builder = TransactionBuilder(self.context, fee_buffer=500000)
 
                 aggstate_tx_output = deepcopy(aggstate_utxo.output)
                 aggstate_tx_output.amount.multi_asset[self.c3_token_hash][
@@ -414,7 +414,7 @@ class Node:
             else None
         )
 
-        builder = TransactionBuilder(self.context)
+        builder = TransactionBuilder(self.context, fee_buffer=250000)
 
         (
             builder.add_script_input(
