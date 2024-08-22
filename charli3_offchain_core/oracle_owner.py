@@ -390,7 +390,7 @@ class OracleOwner:
             # prepare builder
             platform_collect_redeemer = Redeemer(PlatformCollect())
 
-            builder = TransactionBuilder(self.chainquery.context, fee_buffer=250000)
+            builder = TransactionBuilder(self.chainquery.context, fee_buffer=223195)
             builder.add_script_input(
                 reward_utxo,
                 script=self.script_utxo,
