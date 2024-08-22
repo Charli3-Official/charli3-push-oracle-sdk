@@ -335,7 +335,9 @@ class OracleOwner:
             # prepare datums, redeemers and new node utxos for eligible nodes
             add_funds_redeemer = Redeemer(AddFunds())
 
-            builder = TransactionBuilder(self.chainquery.context, fee_buffer=223196)
+            builder = TransactionBuilder(
+                self.chainquery.context, fee_buffer=223196
+            )  # pylint: disable=unexpected-keyword-arg
             builder.add_script_input(
                 aggstate_utxo,
                 script=self.script_utxo,
@@ -390,7 +392,9 @@ class OracleOwner:
             # prepare builder
             platform_collect_redeemer = Redeemer(PlatformCollect())
 
-            builder = TransactionBuilder(self.chainquery.context, fee_buffer=223195)
+            builder = TransactionBuilder(
+                self.chainquery.context, fee_buffer=223195
+            )  # pylint: disable=unexpected-keyword-arg
             builder.add_script_input(
                 reward_utxo,
                 script=self.script_utxo,
@@ -438,7 +442,9 @@ class OracleOwner:
             # prepare datums, redeemers and new node utxos for eligible nodes
             oracle_close_redeemer = Redeemer(OracleClose())
 
-            builder = TransactionBuilder(self.chainquery.context, fee_buffer=223195)
+            builder = TransactionBuilder(
+                self.chainquery.context, fee_buffer=223195
+            )  # pylint: disable=unexpected-keyword-arg
             builder.add_script_input(
                 aggstate_utxo,
                 script=self.script_utxo,
@@ -713,7 +719,9 @@ class OracleOwner:
         """Prepare transaction builder."""
         if not redeemer:
             redeemer = Redeemer(UpdateSettings())
-        builder = TransactionBuilder(self.chainquery.context, fee_buffer=223196)
+        builder = TransactionBuilder(
+            self.chainquery.context, fee_buffer=223196
+        )  # pylint: disable=unexpected-keyword-arg
         builder.add_script_input(
             utxo=aggstate_utxo, script=self.script_utxo, redeemer=deepcopy(redeemer)
         )
