@@ -438,7 +438,7 @@ class OracleOwner:
             # prepare datums, redeemers and new node utxos for eligible nodes
             oracle_close_redeemer = Redeemer(OracleClose())
 
-            builder = TransactionBuilder(self.chainquery.context, fee_buffer=250000)
+            builder = TransactionBuilder(self.chainquery.context, fee_buffer=223195)
             builder.add_script_input(
                 aggstate_utxo,
                 script=self.script_utxo,
