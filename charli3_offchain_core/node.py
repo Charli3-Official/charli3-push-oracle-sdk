@@ -109,7 +109,7 @@ class Node:
         node_own_utxo = self.get_node_own_utxo(oracle_utxos)
 
         if node_own_utxo is not None:
-            time_ms = self.chain_query.get_current_posix_chain_time_ms()
+            time_ms = round(time.time_ns() * 1e-6)
             new_node_feed = PriceFeed(DataFeed(rate, time_ms))
 
             node_own_utxo.output.datum.node_state.ns_feed = new_node_feed
@@ -173,7 +173,7 @@ class Node:
             )
 
         oracle_utxos = await self.chain_query.get_utxos(self.oracle_addr)
-        curr_time_ms = self.chain_query.get_current_posix_chain_time_ms()
+        curr_time_ms = round(time.time_ns() * 1e-6)
         (
             oraclefeed_utxo,
             aggstate_utxo,
