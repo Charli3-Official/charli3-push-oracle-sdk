@@ -29,9 +29,3 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
 profile = "black"
-
-[tool.poetry.scripts]
-deploy = "charli3_offchain_core.scripts.oracle_deploy:cli"
-user_actions = "charli3_offchain_core.scripts.oracle_user_actions:cli"
-owner_actions = "charli3_offchain_core.scripts.oracle_owner_actions:cli"
-simulator = "charli3_offchain_core.scripts.run_simulation:run"
