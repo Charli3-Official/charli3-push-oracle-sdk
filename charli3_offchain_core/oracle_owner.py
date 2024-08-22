@@ -337,7 +337,7 @@ class OracleOwner:
 
             builder = TransactionBuilder(
                 self.chainquery.context, fee_buffer=223196
-            )  # pylint: disable=unexpected-keyword-arg
+            )  # noqa: E1123
             builder.add_script_input(
                 aggstate_utxo,
                 script=self.script_utxo,
@@ -394,7 +394,7 @@ class OracleOwner:
 
             builder = TransactionBuilder(
                 self.chainquery.context, fee_buffer=223195
-            )  # pylint: disable=unexpected-keyword-arg
+            )  # noqa: E1123
             builder.add_script_input(
                 reward_utxo,
                 script=self.script_utxo,
@@ -444,7 +444,7 @@ class OracleOwner:
 
             builder = TransactionBuilder(
                 self.chainquery.context, fee_buffer=223195
-            )  # pylint: disable=unexpected-keyword-arg
+            )  # noqa: E1123
             builder.add_script_input(
                 aggstate_utxo,
                 script=self.script_utxo,
@@ -721,7 +721,7 @@ class OracleOwner:
             redeemer = Redeemer(UpdateSettings())
         builder = TransactionBuilder(
             self.chainquery.context, fee_buffer=223196
-        )  # pylint: disable=unexpected-keyword-arg
+        )  # noqa: E1123
         builder.add_script_input(
             utxo=aggstate_utxo, script=self.script_utxo, redeemer=deepcopy(redeemer)
         )
