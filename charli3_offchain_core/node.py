@@ -1,5 +1,6 @@
 """Node contract transactions class"""
 
+# pylint: disable=unexpected-keyword-arg
 import time
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
