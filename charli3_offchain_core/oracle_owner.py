@@ -1,5 +1,6 @@
 """Oracle Owner contract transactions class"""
 
+# pylint: disable=unexpected-keyword-arg
 from copy import deepcopy
 from typing import List, Literal, Optional, Tuple, Union
 
