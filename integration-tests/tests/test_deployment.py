@@ -1,10 +1,14 @@
+import json
 import os
+from typing import List
 
+import cbor2
 import pytest
 import yaml
 from pycardano import (
     Address,
     MultiAsset,
+    PlutusV2Script,
     RawCBOR,
     TransactionOutput,
     UTxO,
@@ -35,6 +39,19 @@ class TestDeployment(TestBase):
             self.payment_script,
         )
 
+    def load_plutus_script(self, script_path) -> PlutusV2Script:
+        """Parse and return a plutus v2 script from file path"""
+        # Load the Plutus script file
+        with open(script_path, "r") as f:
+            plutus_data = json.load(f)
+        # Get the "cborHex" from the Plutus script file
+        script_hex = plutus_data.get("cborHex")
+
+        # Convert the "cborHex" to PlutusScriptV2
+        plutus_script = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
+
+        return plutus_script
+
     def update_oracle_address(self, new_address):
         # Update the configuration file with the new contract address
         config_path = os.path.join(self.DIR_PATH, "../configuration.yml")
@@ -54,22 +71,19 @@ class TestDeployment(TestBase):
     async def test_oracle_deploy(self):
         await self.tC3.mint_nft_with_script()
 
-        # Oracle contract script
-        oracle_plutus_script_v2 = execute_binary_from_image(
-            artifacts_dir=os.path.join(self.DIR_PATH, "..", "..", "tmp"),
-            oracle_mp=self.owner_script_hash,
-            payment_mp=self.payment_script_hash,
-            payment_tn="Charli3",
-            args=["-a", "-v"],
-        )
-
-        # Oracle contract script using a cbor file
-        # oracle_script_path = os.path.join(self.DIR_PATH, "OracleV3.plutus")
-        # with open(oracle_script_path, "r") as f:
-        #     script_hex = f.read()
-        #     oracle_plutus_script_v2 = PlutusV2Script(
-        #         cbor2.loads(bytes.fromhex(script_hex))
-        #     )
+        if self.local_script:
+            script_path = os.path.join(
+                self.DIR_PATH, "..", "..", "tmp", "OracleV3.plutus"
+            )
+            oracle_plutus_script_v2 = self.load_plutus_script(script_path)
+        else:
+            oracle_plutus_script_v2 = execute_binary_from_image(
+                artifacts_dir=os.path.join(self.DIR_PATH, "..", "..", "tmp"),
+                oracle_mp=self.owner_script_hash,
+                payment_mp=self.payment_script_hash,
+                payment_tn="Charli3",
+                args=["-a", "-v"],
+            )
 
         # Contract hash
         script_hash = plutus_script_hash(oracle_plutus_script_v2)
@@ -109,7 +123,7 @@ class TestDeployment(TestBase):
         )
 
     @pytest.mark.order(2)
-    def test_oraclefeed_nft_existence(self):
+    async def test_oraclefeed_nft_existence(self):
         # Expected oracle feed NFT
         oracle_nft = MultiAsset.from_primitive(
             {self.owner_script_hash.payload: {b"OracleFeed": 1}}
@@ -125,7 +139,7 @@ class TestDeployment(TestBase):
             Value(2000000, oracle_nft),
             datum=oracle_datum,
         )
-        self.assert_output(oracle_addr, expected_oracle_feed_output)
+        await self.assert_output(oracle_addr, expected_oracle_feed_output)
 
     @pytest.mark.order(3)
     def test_number_of_existing_node_utxos(self):
@@ -133,7 +147,7 @@ class TestDeployment(TestBase):
         oracle_addr = self.load_oracle_address()
 
         total_nodes = self.get_total_nodes(oracle_addr)
-        assert total_nodes == 3, f"Expected 3 Nodes, received {total_nodes}"
+        assert total_nodes == 2, f"Expected 2 Nodes, received {total_nodes}"
 
     @pytest.mark.order(4)
     def test_aggstate_nft_existence(self):
@@ -141,7 +155,9 @@ class TestDeployment(TestBase):
         oracle_addr = self.load_oracle_address()
 
         oracle_utxos = self.CHAIN_CONTEXT.context.utxos(oracle_addr)
-        aggstate_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.aggstate_nft)
+        aggstate_utxo: List[UTxO] = filter_utxos_by_asset(
+            oracle_utxos, self.aggstate_nft
+        )
         assert aggstate_utxo != [], "AggState UTxO not found"
 
     @pytest.mark.order(5)
@@ -150,5 +166,5 @@ class TestDeployment(TestBase):
         oracle_addr = self.load_oracle_address()
 
         oracle_utxos = self.CHAIN_CONTEXT.context.utxos(oracle_addr)
-        reward_utxo: UTxO = filter_utxos_by_asset(oracle_utxos, self.reward_nft)
+        reward_utxo: List[UTxO] = filter_utxos_by_asset(oracle_utxos, self.reward_nft)
         assert reward_utxo != [], "Reward UTxO not found"

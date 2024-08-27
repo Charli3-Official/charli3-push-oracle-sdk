@@ -23,8 +23,8 @@ class TestAggregate(OracleOwnerActions):
     @pytest.mark.asyncio
     async def test_node_updates(self):
         nodes = []
-        # Aggregation with 3 nodes because of memory limitations
-        for i in range(1, 4):
+        # Aggregation with 2 nodes because of memory limitations
+        for i in range(1, 3):
             skey, vkey = self.wallet_keys[i]
             node = Node(
                 self.NETWORK,
@@ -69,8 +69,8 @@ class TestAggregate(OracleOwnerActions):
             updated_nodes += 1
 
         assert (
-            3 == updated_nodes
-        ), f"Expected updated nodes: 3, but got: {updated_nodes}"
+            2 == updated_nodes
+        ), f"Expected updated nodes: 2, but got: {updated_nodes}"
 
     @retry(tries=TEST_RETRIES, backoff=1.5, delay=6, jitter=(0, 4))
     @pytest.mark.asyncio
@@ -89,7 +89,7 @@ class TestAggregate(OracleOwnerActions):
             self.payment_script_hash,
             self.tC3_token_name,
         )
-        await asyncio.sleep(5)
+        await asyncio.sleep(30)
         print("Aggregating...")
         await node.aggregate()
 

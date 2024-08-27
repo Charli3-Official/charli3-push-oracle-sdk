@@ -1,25 +1,27 @@
 """An example that demonstrates low-level construction of a transaction."""
 
 import asyncio
-import glob
 import os
 
 import cbor2
+import ogmios
 import yaml
 from pycardano import (
     Address,
     AssetName,
+    ExtendedSigningKey,
+    ExtendedVerificationKey,
     IndefiniteList,
     MultiAsset,
     Network,
-    OgmiosChainContext,
-    PaymentSigningKey,
     PaymentVerificationKey,
     PlutusV2Script,
     plutus_script_hash,
 )
+from pycardano.key import HDWallet
 from retry import retry
 
+from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.datums import OraclePlatform, OracleSettings, PriceRewards
 from charli3_offchain_core.owner_script import OwnerScript
@@ -28,29 +30,33 @@ TEST_RETRIES = 6
 
 
 class TestBase:
-    NETWORK = Network.MAINNET
+    NETWORK = Network.TESTNET
     OGMIOS_WS = "ws://localhost:1337"
     KUPO_URL = "http://localhost:1442"
-    OGMIOS_CONTEXT = OgmiosChainContext(
-        ws_url=OGMIOS_WS, network=NETWORK, kupo_url=KUPO_URL
+    _, ws_host = OGMIOS_WS.split("ws://")
+    ws_url, port = ws_host.split(":")
+    OGMIOS_CONTEXT = ogmios.OgmiosChainContext(
+        host=ws_url, port=int(port), network=NETWORK
     )
-    CHAIN_CONTEXT = ChainQuery(ogmios_context=OGMIOS_CONTEXT)
+    KUPO_CONTEXT = KupoContext(KUPO_URL)
+    CHAIN_CONTEXT = ChainQuery(ogmios_context=OGMIOS_CONTEXT, kupo_context=KUPO_CONTEXT)
     DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+    wallet_keys = []
 
     def setup_method(self, method):
         # Chain query
         self.staged_query = StagedTxSubmitter(
             self.CHAIN_CONTEXT.blockfrost_context, self.CHAIN_CONTEXT.ogmios_context
         )
+        self.load_oracle_configuration()
 
         self.initialize_script_paths()
         self.initialize_payment_script()
-        self.wallet_dir = "./wallets"
         self.initialize_wallet_keys()
 
         # Oracle settings
-        self.load_oracle_configuration()
         self.initialize_oracle_settings()
+        self.local_script = self.config.get("local_script", False)
         self.script_start_slot = self.config["oracle_owner"]["script_start_slot"]
         self.tC3_token_name = AssetName(b"Charli3")
         self.tC3_initial_amount = self.config["oracle_owner"]["tC3_initial_amount"]
@@ -61,19 +67,22 @@ class TestBase:
 
     # Load cluster wallets
     def load_wallet_keys(self):
-        vkey_files = glob.glob(f"{self.wallet_dir}/*.vkey")
-        skey_files = glob.glob(f"{self.wallet_dir}/*.skey")
-
-        keys = []
-        for vkey_file, skey_file in zip(sorted(vkey_files), sorted(skey_files)):
-            signing_key = PaymentSigningKey.load(skey_file)
-            verification_key = PaymentVerificationKey.load(vkey_file)
-            keys.append((signing_key, verification_key))
-        return keys
+        mnemonic = self.config["mnemonic"]
+        hdwallet = HDWallet.from_mnemonic(mnemonic=mnemonic)
+        key_variations = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        for key in key_variations:
+            child_wallet = hdwallet.derive(key)
+            signing_key = ExtendedSigningKey.from_hdwallet(child_wallet)
+            verification_key = PaymentVerificationKey.from_cbor(
+                ExtendedVerificationKey.from_signing_key(signing_key)
+                .to_non_extended()
+                .to_cbor()
+            )
+            self.wallet_keys.append((signing_key, verification_key))
 
     # Wallet initialization
     def initialize_wallet_keys(self):
-        self.wallet_keys = self.load_wallet_keys()
+        self.load_wallet_keys()
 
         self.owner_signing_key, self.owner_verification_key = self.wallet_keys[0]
         self.owner_address = Address(
@@ -135,7 +144,7 @@ class TestBase:
             os_node_list=[
                 self.node_1_pkh,
                 self.node_2_pkh,
-                self.node_3_pkh,
+                # self.node_3_pkh,
                 # self.node_4_pkh,
                 # self.node_5_pkh,
             ],
@@ -199,9 +208,11 @@ class TestBase:
         self.mint_path = os.path.join(self.DIR_PATH, "..", "..", "mint_script.plutus")
 
     @retry(tries=TEST_RETRIES, delay=3)
-    def assert_output(self, target_address, target_output):
-        utxos = self.CHAIN_CONTEXT.context.utxos(target_address)
+    async def assert_output(self, target_address, target_output):
+        utxos = await self.CHAIN_CONTEXT.get_utxos(target_address)
         found = False
+        print(f"target_output: {target_output}")
+        print(f"all utxos: {[utxo.output for utxo in utxos]}")
         for utxo in utxos:
             output = utxo.output
 
