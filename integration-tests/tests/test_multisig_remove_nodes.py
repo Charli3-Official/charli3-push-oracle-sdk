@@ -20,7 +20,7 @@ class TestMultisigRemoveNodes(MultisigOracleOwnerActions):
 
         total_nodes = self.get_total_nodes(oracle_addr)
 
-        nodes_to_be_removed = [self.node_3_pkh.hex()]
+        nodes_to_be_removed = [self.node_1_pkh.hex()]
 
         platform_pkhs = [
             self.owner_verification_key.hash().payload.hex(),

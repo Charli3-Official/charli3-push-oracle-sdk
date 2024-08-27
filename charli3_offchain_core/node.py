@@ -383,6 +383,7 @@ class Node:
         oracle_utxos = await self.chain_query.get_utxos(self.oracle_addr)
         reward_utxo, reward_datum = self._get_reward_utxo_and_datum(oracle_utxos)
 
+        c3_amount = 0
         # preparing multiasset.
         for reward_info in reward_datum.reward_state.node_reward_list:
             if reward_info.reward_address == self.node_operator:
