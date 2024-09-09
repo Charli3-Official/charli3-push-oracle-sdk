@@ -16,6 +16,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Install poetry
+      run: pipx install poetry
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'poetry'
+
     - name: Log in to the Container registry
       uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
       with:
@@ -23,20 +32,14 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
-
-    - name: Use Cachix
-      uses: cachix/cachix-action@1174ea01d449b43245be6e9581deba37afdef485
-      with:
-        name: charli3
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-    - name: Install libsecp256k1 library
+    - name: Install system dependencies
       run: sudo apt-get install -y libsecp256k1-0
 
-    - name: Install python dependencies
-      run: nix develop -c poetry install
+    - name: Install project dependencies
+      run: |
+        poetry install
 
     - name: Run integration tests script
-      run: nix develop -c env -C integration-tests ./run_integration_tests.sh
+      run: |
+        cd integration-tests
+        ./run_integration_tests.sh
