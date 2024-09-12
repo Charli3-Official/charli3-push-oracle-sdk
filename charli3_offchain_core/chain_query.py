@@ -1,13 +1,11 @@
 """ This module contains the ChainQuery class, which is used to query the blockchain."""
 
 import asyncio
-import functools
 import time
 from dataclasses import dataclass, field
 from typing import List, Literal, Mapping, Optional, Tuple, Union
 
 import cbor2
-import ogmios
 from blockfrost import ApiError
 from pycardano import (
     Address,
@@ -15,7 +13,7 @@ from pycardano import (
     ExtendedSigningKey,
     GenesisParameters,
     InsufficientUTxOBalanceException,
-    OgmiosChainContext,
+    KupoOgmiosV6ChainContext,
     PaymentSigningKey,
     PlutusV2Script,
     RawCBOR,
@@ -31,7 +29,6 @@ from pycardano import (
     plutus_script_hash,
 )
 
-from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.datums import NodeDatum
 from charli3_offchain_core.utils.exceptions import CollateralException
 from charli3_offchain_core.utils.logging_config import logging
@@ -93,38 +90,20 @@ class ChainQuery:
     def __init__(
         self,
         blockfrost_context: BlockFrostChainContext = None,
-        ogmios_context: OgmiosChainContext = None,
+        kupo_ogmios_context: KupoOgmiosV6ChainContext = None,
         oracle_address: Optional[str] = None,
-        kupo_context: Optional[KupoContext] = None,
         is_local_testnet: bool = False,
     ):
-        if blockfrost_context is None and ogmios_context is None:
+        if blockfrost_context is None and kupo_ogmios_context is None:
             raise ValueError("At least one of the chain contexts must be provided.")
 
-        self.kupo_context = kupo_context
         self.blockfrost_context = blockfrost_context
-        self.ogmios_context = ogmios_context
+        self.ogmios_context = kupo_ogmios_context
         self.oracle_address = oracle_address
-        self.context = blockfrost_context if blockfrost_context else ogmios_context
+        self.context = blockfrost_context if blockfrost_context else kupo_ogmios_context
         self.is_local_testnet = is_local_testnet
 
         self._datum_cache = {}
-
-        if kupo_context and (
-            isinstance(self.context, ogmios.OgmiosChainContext)
-            or isinstance(self.context, BlockFrostChainContext)
-        ):
-            self.context._datum_cache = self._datum_cache
-            self.context._kupo_url = kupo_context.api_url
-            self.context._get_datum_from_kupo = functools.partial(
-                OgmiosChainContext._get_datum_from_kupo, self.context
-            )
-            self.context._extract_asset_info = functools.partial(
-                OgmiosChainContext._extract_asset_info, self.context
-            )
-            self.context._utxos = functools.partial(
-                OgmiosChainContext._utxos_kupo, self.context
-            )
 
     @property
     def genesis_params(self) -> GenesisParameters:
@@ -165,13 +144,13 @@ class ChainQuery:
                 tx_id.to_cbor().hex()
             ).json()
             return RawCBOR(bytes.fromhex(response.metadata))
-        if self.kupo_context:
+        if self.ogmios_context:
             if not slot:
                 logger.error(
                     "Slot number was not provided when retrieving metadata with Kupo."
                 )
                 return None
-            metadata_cbor = await self.kupo_context.get_metadata_cbor(tx_id, slot)
+            metadata_cbor = await self.ogmios_context.get_metadata_cbor(tx_id, slot)
             return metadata_cbor
         logger.warning("No context present to retrieve metadata.")
         return None
@@ -269,7 +248,7 @@ class ChainQuery:
 
             logger.error("script hash mismatch")
 
-        if isinstance(self.context, OgmiosChainContext):
+        if isinstance(self.context, KupoOgmiosV6ChainContext):
             logger.error("ogmios context does not support get_script")
             return None
 
@@ -290,7 +269,7 @@ class ChainQuery:
             return self.blockfrost_context.utxos(str(address))
         if self.ogmios_context is not None:
             logger.info("Getting utxos from ogmios")
-            return await self.kupo_context.utxos_kupo(str(address))
+            return self.ogmios_context.utxos(str(address))
 
     async def process_common_inputs(
         self,
@@ -499,7 +478,7 @@ class ChainQuery:
         """
 
         async def _wait_for_tx(
-            context: Union[BlockFrostChainContext, OgmiosChainContext],
+            context: Union[BlockFrostChainContext, KupoOgmiosV6ChainContext],
             tx_id: TransactionId,
             check_fn: callable,
             retries: int = 0,
@@ -508,7 +487,7 @@ class ChainQuery:
             """Wait for a transaction to be confirmed.
 
             Args:
-                context (Union[BlockFrostChainContext, OgmiosChainContext]): The chain context to use. # pylint: disable=line-too-long
+                context (Union[BlockFrostChainContext, KupoOgmiosV6ChainContext]): The chain context to use. # pylint: disable=line-too-long
                 tx_id (TransactionId): The transaction ID to wait for.
                 check_fn (callable): The function to use to check if the transaction is confirmed.
                 retries (int, optional): The number of retries. Defaults to 0.
@@ -568,13 +547,13 @@ class ChainQuery:
             return context.api.transaction(tx_id)
 
         async def check_ogmios(
-            context: OgmiosChainContext, tx_id: TransactionId
+            context: KupoOgmiosV6ChainContext, tx_id: TransactionId
         ) -> Transaction:
             """
             Check if the transaction is confirmed using the ogmios API.
 
             Args:
-                context (OgmiosChainContext): The chain context to use.
+                context (KupoOgmiosV6ChainContext): The chain context to use.
                 tx_id (TransactionId): The transaction ID to wait for.
 
             Returns:

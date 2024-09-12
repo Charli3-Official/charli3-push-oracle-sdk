@@ -6,7 +6,6 @@ import subprocess
 from typing import Tuple
 
 import click
-import ogmios
 import yaml
 from pycardano import (
     Address,
@@ -15,6 +14,7 @@ from pycardano import (
     ExtendedSigningKey,
     HDWallet,
     IndefiniteList,
+    KupoOgmiosV6ChainContext,
     MultiAsset,
     Network,
     PaymentVerificationKey,
@@ -24,7 +24,6 @@ from pycardano import (
     VerificationKeyHash,
 )
 
-from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.datums import OraclePlatform, OracleSettings, PriceRewards
 from charli3_offchain_core.oracle_start import OracleStart
@@ -181,8 +180,7 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
     ogmios_config = chain_query_config.get("ogmios")
 
     blockfrost_context = None
-    ogmios_context = None
-    kupo_context = None
+    kupo_ogmios_context = None
 
     if (
         blockfrost_config
@@ -202,15 +200,18 @@ def setup(ctx, config_file, script_path, is_local_image, image_name):
 
         _, ws_string = ogmios_ws_url.split("ws://")
         ws_url, port = ws_string.split(":")
-        ogmios_context = ogmios.OgmiosChainContext(
-            host=ws_url, port=int(port), network=network
+        kupo_ogmios_context = KupoOgmiosV6ChainContext(
+            host=ws_url,
+            port=int(port),
+            secure=False,
+            refetch_chain_tip_interval=None,
+            network=network,
+            kupo_url=kupo_url,
         )
-        kupo_context = KupoContext(kupo_url)
 
     chain_query = ChainQuery(
         blockfrost_context=blockfrost_context,
-        ogmios_context=ogmios_context,
-        kupo_context=kupo_context,
+        kupo_ogmios_context=kupo_ogmios_context,
     )
 
     hdwallet = HDWallet.from_mnemonic(mnemonic_24)
