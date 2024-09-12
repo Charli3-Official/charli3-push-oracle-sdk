@@ -3,7 +3,6 @@
 import asyncio
 from typing import Union
 
-import ogmios
 import yaml
 from pycardano import (
     Address,
@@ -11,6 +10,7 @@ from pycardano import (
     BlockFrostChainContext,
     ExtendedSigningKey,
     HDWallet,
+    KupoOgmiosV6ChainContext,
     MultiAsset,
     Network,
     PaymentVerificationKey,
@@ -19,7 +19,6 @@ from pycardano import (
     TransactionInput,
 )
 
-from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.chain_query import ChainQuery
 from charli3_offchain_core.node import Node
 
@@ -36,8 +35,7 @@ blockfrost_config = chain_query_config.get("blockfrost")
 ogmios_config = chain_query_config.get("ogmios")
 
 blockfrost_context = None  # pylint: disable=invalid-name
-ogmios_context = None  # pylint: disable=invalid-name
-kupo_context = None  # pylint: disable=invalid-name
+kupo_ogmios_context = None  # pylint: disable=invalid-name
 
 if (
     blockfrost_config
@@ -56,15 +54,18 @@ if ogmios_config and ogmios_config.get("ws_url") and ogmios_config.get("kupo_url
     kupo_url = ogmios_config.get("kupo_url")
     _, ws_string = ogmios_ws_url.split("ws://")
     ws_url, port = ws_string.split(":")
-    ogmios_context = ogmios.OgmiosChainContext(
-        host=ws_url, port=int(port), network=network
+    kupo_ogmios_context = KupoOgmiosV6ChainContext(
+        host=ws_url,
+        port=int(port),
+        secure=False,
+        refetch_chain_tip_interval=None,
+        network=network,
+        kupo_url=kupo_url,
     )
-    kupo_context = KupoContext(kupo_url)
 
 chain_query = ChainQuery(
     blockfrost_context=blockfrost_context,
-    ogmios_context=ogmios_context,
-    kupo_context=kupo_context,
+    kupo_ogmios_context=kupo_ogmios_context,
 )
 nft_hash = config["oracle_info"]["minting_nft_hash"]
 

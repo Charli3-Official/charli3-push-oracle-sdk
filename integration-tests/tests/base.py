@@ -4,7 +4,6 @@ import asyncio
 import os
 
 import cbor2
-import ogmios
 import yaml
 from pycardano import (
     Address,
@@ -12,6 +11,7 @@ from pycardano import (
     ExtendedSigningKey,
     ExtendedVerificationKey,
     IndefiniteList,
+    KupoOgmiosV6ChainContext,
     MultiAsset,
     Network,
     PaymentVerificationKey,
@@ -21,7 +21,6 @@ from pycardano import (
 from pycardano.key import HDWallet
 from retry import retry
 
-from charli3_offchain_core.backend.kupo import KupoContext
 from charli3_offchain_core.chain_query import ChainQuery, StagedTxSubmitter
 from charli3_offchain_core.datums import OraclePlatform, OracleSettings, PriceRewards
 from charli3_offchain_core.owner_script import OwnerScript
@@ -35,18 +34,24 @@ class TestBase:
     KUPO_URL = "http://localhost:1442"
     _, ws_host = OGMIOS_WS.split("ws://")
     ws_url, port = ws_host.split(":")
-    OGMIOS_CONTEXT = ogmios.OgmiosChainContext(
-        host=ws_url, port=int(port), network=NETWORK
+    kupo_ogmios_context = KupoOgmiosV6ChainContext(
+        host=ws_url,
+        port=int(port),
+        secure=False,
+        refetch_chain_tip_interval=None,
+        network=NETWORK,
+        kupo_url=KUPO_URL,
     )
-    KUPO_CONTEXT = KupoContext(KUPO_URL)
-    CHAIN_CONTEXT = ChainQuery(ogmios_context=OGMIOS_CONTEXT, kupo_context=KUPO_CONTEXT)
+
+    CHAIN_CONTEXT = ChainQuery(kupo_ogmios_context=kupo_ogmios_context)
     DIR_PATH = os.path.dirname(os.path.realpath(__file__))
     wallet_keys = []
 
     def setup_method(self, method):
         # Chain query
         self.staged_query = StagedTxSubmitter(
-            self.CHAIN_CONTEXT.blockfrost_context, self.CHAIN_CONTEXT.ogmios_context
+            self.CHAIN_CONTEXT.blockfrost_context,
+            self.CHAIN_CONTEXT.ogmios_context,
         )
         self.load_oracle_configuration()
 
