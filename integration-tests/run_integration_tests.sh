@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 
-set -e
-set -x
+set -e  # Exit on any command failure
+set -x  # Print each command before executing it
 
 # Function to kill processes
 kill_processes() {
   echo "Shutting down the cluster..."
   ./bin/devkit.sh stop
-  exit 0
+
+  # Preserve the exit code from tests
+  exit $test_result
 }
-# Trap the SIGINT signal and call the function to kill processes
+
+# Trap the SIGINT, SIGTERM, and EXIT signals and call the function to kill processes
 trap 'kill_processes' SIGINT SIGTERM EXIT
 
 # Start the node in the background
@@ -23,10 +26,13 @@ run_test() {
   local test_pattern="$1"
   poetry run pytest tests -v -k "$test_pattern"
 
+  # Capture the exit code of the test
+  test_result=$?
+
   # Exit if the test fails
-  if [ $? -ne 0 ]; then
+  if [ $test_result -ne 0 ]; then
     echo "Test pattern $test_pattern failed."
-    exit 1
+    exit $test_result
   fi
 }
 
@@ -58,7 +64,8 @@ run_test "TestMultisigDeployment"
 run_test "TestMultisigReferenceScript"
 run_test "TestMultisigRemoveNodes"
 
-# Stop the cluster
+# Stop the cluster (this will also be handled by kill_processes on EXIT)
 ./bin/devkit.sh stop
 
-exit 0
+# Exit with the result of the last test
+exit $test_result
