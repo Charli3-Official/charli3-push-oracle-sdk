@@ -12,7 +12,7 @@ oracle_owner:
   script_start_slot: 1
   tC3_add_funds: 1000000000
   tC3_initial_amount: 300000
-oracle_script_address: addr_test1wr97wuv7862yj5ckaks6cqc8yau03gxn9rpfsm0790yscqscpluhs
+oracle_script_address: addr_test1wq4zmn7d93dw0wsz05nmdcdkn3mjff98flxhzqne33896xq2464cv
 oracle_settings:
   os_aggregate_change: 200
   os_aggregate_time: 300000
