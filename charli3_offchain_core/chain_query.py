@@ -92,7 +92,7 @@ class ChainQuery:
         blockfrost_context: BlockFrostChainContext = None,
         kupo_ogmios_context: KupoOgmiosV6ChainContext = None,
         oracle_address: Optional[str] = None,
-        is_local_testnet: bool = False,
+        use_slot_time: bool = False,
     ):
         if blockfrost_context is None and kupo_ogmios_context is None:
             raise ValueError("At least one of the chain contexts must be provided.")
@@ -101,7 +101,7 @@ class ChainQuery:
         self.ogmios_context = kupo_ogmios_context
         self.oracle_address = oracle_address
         self.context = blockfrost_context if blockfrost_context else kupo_ogmios_context
-        self.is_local_testnet = is_local_testnet
+        self.use_slot_time = use_slot_time
 
         self._datum_cache = {}
 
@@ -123,17 +123,19 @@ class ChainQuery:
         return last_block_slot  # pylint: disable=E0606
 
     def get_current_posix_chain_time_ms(self) -> int:
-        if self.is_local_testnet:
+        if self.use_slot_time:
+            genesis_params = self.genesis_params
+            network = cardano_magic_to_network(genesis_params.network_magic)
+            slot_config = SLOT_CONFIG_NETWORK[network]
+
+            ms_after_origin = (
+                self.last_block_slot - slot_config.zero_slot
+            ) * slot_config.slot_length
+
+            return slot_config.zero_time + ms_after_origin
+
+        else:
             return round(time.time_ns() * 1e-6)
-        genesis_params = self.genesis_params
-        network = cardano_magic_to_network(genesis_params.network_magic)
-        slot_config = SLOT_CONFIG_NETWORK[network]
-
-        ms_after_origin = (
-            self.last_block_slot - slot_config.zero_slot
-        ) * slot_config.slot_length
-
-        return slot_config.zero_time + ms_after_origin
 
     async def get_metadata_cbor(
         self, tx_id: TransactionId, slot: Optional[int]
