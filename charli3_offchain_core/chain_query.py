@@ -561,7 +561,7 @@ class ChainQuery:
             Returns:
                 The transaction object if found, None otherwise.
             """
-            response = context._query_utxos_by_tx_id(tx_id, 0)
+            response = context._wrapped_backend._query_utxos_by_tx_id(tx_id, 0)
             return response if response != [] else None
 
         if self.ogmios_context:

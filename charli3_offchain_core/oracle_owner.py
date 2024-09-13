@@ -116,7 +116,6 @@ class OracleOwner:
             chainquery.blockfrost_context,
             chainquery.ogmios_context,
             oracle_addr,
-            chainquery.kupo_context,
         )
         self.signing_key = signing_key
         self.verification_key = verification_key
