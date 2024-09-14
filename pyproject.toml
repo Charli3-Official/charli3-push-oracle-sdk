@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pycardano = { git = "https://github.com/xxAVOGADROxx/pycardano.git", branch = "chang-fixes"}
+pycardano = { git = "https://github.com/Charli3-Official/pycardano.git", branch = "chang"}
 retry = "^0.9.2"
 pyyaml = "^6.0"
 click = "^8.1.3"
