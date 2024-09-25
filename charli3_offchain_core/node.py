@@ -1,7 +1,6 @@
 """Node contract transactions class"""
 
 # pylint: disable=unexpected-keyword-arg
-import time
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 
@@ -15,6 +14,7 @@ from pycardano import (
     Network,
     PaymentSigningKey,
     PaymentVerificationKey,
+    RawCBOR,
     Redeemer,
     ScriptHash,
     Transaction,
@@ -34,6 +34,7 @@ from charli3_offchain_core.datums import (
     OracleDatum,
     PriceData,
     PriceFeed,
+    PriceRewards,
     RewardDatum,
 )
 from charli3_offchain_core.oracle_checks import (
@@ -192,22 +193,9 @@ class Node:
         total_nodes = len(aggstate_datum.aggstate.ag_settings.os_node_list)
         fees = aggstate_datum.aggstate.ag_settings.os_node_fee_price
 
-        def scale_reward(val: int) -> int:
-            assert (
-                c3_oracle_rate_feed is not None
-            ), "oracle_rate_feed should not be None"
-            return (val * c3_oracle_rate_feed) // COIN_PRECISION
-
-        if not c3_oracle_rate_feed:
-            min_c3_required = (
-                fees.node_fee * total_nodes + fees.aggregate_fee + fees.platform_fee
-            )
-        else:
-            min_c3_required = (
-                scale_reward(fees.node_fee) * total_nodes
-                + scale_reward(fees.aggregate_fee)
-                + scale_reward(fees.platform_fee)
-            )
+        min_c3_required = self.calculate_min_c3_required(
+            fees, total_nodes, c3_oracle_rate_feed
+        )
 
         # Calculations and Conditions check for aggregation.
         if check_utxo_asset_balance(
@@ -229,9 +217,10 @@ class Node:
                     )
                 else:
                     c3_fees = (
-                        len(valid_nodes) * scale_reward(fees.node_fee)
-                        + scale_reward(fees.aggregate_fee)
-                        + scale_reward(fees.platform_fee)
+                        len(valid_nodes)
+                        * self.scale_reward(fees.node_fee, c3_oracle_rate_feed)
+                        + self.scale_reward(fees.aggregate_fee, c3_oracle_rate_feed)
+                        + self.scale_reward(fees.platform_fee, c3_oracle_rate_feed)
                     )
 
                 oracle_feed_expiry = (
@@ -289,7 +278,9 @@ class Node:
                             reward_info.reward_amount += (
                                 fees.node_fee
                                 if not c3_oracle_rate_feed
-                                else scale_reward(fees.node_fee)
+                                else self.scale_reward(
+                                    fees.node_fee, c3_oracle_rate_feed
+                                )
                             )
                         if (
                             reward_info.reward_address == self.node_operator
@@ -298,7 +289,9 @@ class Node:
                             reward_info.reward_amount += (
                                 fees.aggregate_fee
                                 if not c3_oracle_rate_feed
-                                else scale_reward(fees.aggregate_fee)
+                                else self.scale_reward(
+                                    fees.aggregate_fee, c3_oracle_rate_feed
+                                )
                             )
                             aggregate_fee_added = True
 
@@ -306,7 +299,7 @@ class Node:
                 reward_datum.reward_state.platform_reward += (
                     fees.platform_fee
                     if not c3_oracle_rate_feed
-                    else scale_reward(fees.platform_fee)
+                    else self.scale_reward(fees.platform_fee, c3_oracle_rate_feed)
                 )
                 reward_tx_output = deepcopy(reward_utxo.output)
 
@@ -515,7 +508,53 @@ class Node:
         rewardstate_utxo: UTxO = self.filter_utxos_by_asset(
             oracle_utxos, self.reward_nft
         )[0]
-        rewardstate_datum: RewardDatum = RewardDatum.from_cbor(
-            rewardstate_utxo.output.datum.cbor
-        )
+        rewardstate_datum: RewardDatum = None
+
+        datum = rewardstate_utxo.output.datum
+
+        if isinstance(datum, RewardDatum):
+            rewardstate_datum = datum
+        elif isinstance(datum, RawCBOR):
+            rewardstate_datum = RewardDatum.from_cbor(datum.cbor)
+
         return rewardstate_utxo, rewardstate_datum
+
+    def scale_reward(self, val: int, c3_oracle_rate_feed: int) -> int:
+        """
+        Scale the reward based on the C3 oracle rate feed.
+
+        Args:
+            val (int): The original reward value.
+            c3_oracle_rate_feed (int): The C3 oracle rate feed value.
+
+        Returns:
+            int: The scaled reward value.
+        """
+        return (val * c3_oracle_rate_feed) // COIN_PRECISION
+
+    def calculate_min_c3_required(
+        self,
+        fees: PriceRewards,
+        total_nodes: int,
+        c3_oracle_rate_feed: Optional[int] = None,
+    ) -> int:
+        """
+        Calculate the minimum C3 required based on fees and oracle rate feed.
+
+        Args:
+            fees (PriceRewards): The fees structure.
+            total_nodes (int): The total number of nodes.
+            c3_oracle_rate_feed (Optional[int]): The C3 oracle rate feed value.
+                                                If None, no scaling is applied.
+
+        Returns:
+            int: The minimum C3 required.
+        """
+        if not c3_oracle_rate_feed:
+            return fees.node_fee * total_nodes + fees.aggregate_fee + fees.platform_fee
+        else:
+            return (
+                self.scale_reward(fees.node_fee, c3_oracle_rate_feed) * total_nodes
+                + self.scale_reward(fees.aggregate_fee, c3_oracle_rate_feed)
+                + self.scale_reward(fees.platform_fee, c3_oracle_rate_feed)
+            )

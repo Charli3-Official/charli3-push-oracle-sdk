@@ -77,10 +77,14 @@ SLOT_CONFIG_NETWORK: Mapping[NetworkLiteral, SlotConfig] = {
 
 
 class NoContextSetup(Exception):
+    """Raised when no context is set up for the chain query."""
+
     pass
 
 
 class UnknownNetworkMagic(Exception):
+    """Raised when the network magic is unknown."""
+
     pass
 
 
@@ -107,6 +111,7 @@ class ChainQuery:
 
     @property
     def genesis_params(self) -> GenesisParameters:
+        """Get the genesis parameters for the chain."""
 
         if self.ogmios_context:
             genesis_params = self.ogmios_context.genesis_param
@@ -116,6 +121,7 @@ class ChainQuery:
 
     @property
     def last_block_slot(self) -> int:
+        """Get the last block slot for the chain."""
         if self.ogmios_context:
             last_block_slot = self.ogmios_context.last_block_slot
         elif self.blockfrost_context:
@@ -123,6 +129,7 @@ class ChainQuery:
         return last_block_slot  # pylint: disable=E0606
 
     def get_current_posix_chain_time_ms(self) -> int:
+        """Get the current chain time in milliseconds."""
         if self.use_slot_time:
             genesis_params = self.genesis_params
             network = cardano_magic_to_network(genesis_params.network_magic)
@@ -158,6 +165,7 @@ class ChainQuery:
         return None
 
     async def get_tip(self) -> int:
+        """get tip of the chain"""
         if self.blockfrost_context:
             response = self.blockfrost_context.api.block_latest().json()
             return response.slot
@@ -284,7 +292,8 @@ class ChainQuery:
 
         Args:
             builder (TransactionBuilder): transaction builder
-            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            address (Address): address belonging to signing_key, used for balancing,
+                            collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
             user_defined_expenses (int): Quantity to cover transaction fees and collateral
         (Default is 0 if not provided, as it will automatically obtain input UTxOs.)
@@ -333,7 +342,8 @@ class ChainQuery:
     ) -> UTxO:
         """get or create collateral
         Args:
-            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            address (Address): address belonging to signing_key, used for balancing,
+                                collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
         Returns:
             UTxO: utxo
@@ -354,7 +364,8 @@ class ChainQuery:
     ) -> UTxO:
         """get or create utxo for convert blockchain transaction fees
         Args:
-            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            address (Address): address belonging to signing_key, used for balancing,
+                                collateral and change
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
             required_amount (int): required amount to cover transaction fees.
         Returns:
@@ -674,7 +685,8 @@ class StagedTxSubmitter(ChainQuery):
         Args:
             builder (TransactionBuilder): transaction builder
             signing_key (Union[PaymentSigningKey, ExtendedSigningKey]): signing key
-            address (Address): address belonging to signing_key, used for balancing, collateral and change
+            address (Address): address belonging to signing_key, used for balancing,
+                            collateral and change
         """
         builder = await self.process_common_inputs(builder, address, signing_key)
 
