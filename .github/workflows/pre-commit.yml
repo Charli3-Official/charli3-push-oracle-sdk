@@ -25,27 +25,21 @@ jobs:
           python-version: "3.10"
           cache: "poetry"
 
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create false
-
       - name: Install dependencies
-        run: poetry install
-
-      - name: Install pre-commit
-        run: pip install pre-commit
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+          poetry install
 
       - name: Cache the pre-commit environment
         uses: actions/cache@v3
         with:
           path: |
             ~/.cache/pre-commit
-            ~/.cache/pypoetry
+            .venv
           key: ${{ runner.os }}-precommit-${{ hashFiles('**/.pre-commit-config.yaml', '**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-precommit-
-            ${{ runner.os }}-precommit-${{ hashFiles('**/.pre-commit-config.yaml') }}-
-            ${{ runner.os }}-precommit-${{ hashFiles('**/poetry.lock') }}-
 
       - name: Run pre-commit
-        run: pre-commit run --all-files
+        run: poetry run pre-commit run --all-files
