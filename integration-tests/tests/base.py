@@ -210,7 +210,9 @@ class TestBase:
         self.serialized_path = os.path.join(
             self.DIR_PATH, "..", "..", "binary", "serialized.zip"
         )
-        self.mint_path = os.path.join(self.DIR_PATH, "..", "..", "mint_script.plutus")
+        self.mint_path = os.path.join(
+            self.DIR_PATH, "..", "..", "plutus-scripts", "mint_script.plutus"
+        )
 
     @retry(tries=TEST_RETRIES, delay=3)
     async def assert_output(self, target_address, target_output):

@@ -26,11 +26,12 @@ blockfrost_context = BlockFrostChainContext(
 context = ChainQuery(
     blockfrost_context,
 )
-node_signing_key = PaymentSigningKey.load("node.skey")
-node_verification_key = PaymentVerificationKey.load("node.vkey")
+# TODO: Add your node keys here
+node_signing_key = PaymentSigningKey.load("path/to/your/node.skey")
+node_verification_key = PaymentVerificationKey.load("path/to/your/node.vkey")
 node_pub_key_hash = node_verification_key.hash()
 node_address = Address(payment_part=node_pub_key_hash, network=network)
-with open("./mint_script.plutus", "r") as f:
+with open("../plutus-scripts/mint_script.plutus", "r") as f:
     script_hex = f.read()
     plutus_script_v2 = PlutusV2Script(cbor2.loads(bytes.fromhex(script_hex)))
 
