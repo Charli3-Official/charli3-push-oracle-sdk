@@ -1,4 +1,4 @@
-# Charli3 Offchain Core
+# Charli3 Push Oracle Offchain Core SDK
 
 This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It now leverages the charli3-offchain-core package, which contains shared code that is used across different private repositories of the Charli3 oracle network.
 
