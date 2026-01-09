@@ -323,7 +323,10 @@ AGPL-3.0 is applied where reciprocal openness is important to protect shared pro
 
 Please refer to each repository’s [LICENSE](LICENSE) file for the specific terms that apply.
 
+Full commercial licenses available upon request by contacting sales@charli3.io.
 
 ## Official Deployments
 
 Charli3 maintains and supports only official deployments that use the $C3 token and unmodified protocol economics.
+
+
