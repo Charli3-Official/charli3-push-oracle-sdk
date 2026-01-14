@@ -328,5 +328,3 @@ Full commercial licenses available upon request by contacting sales@charli3.io.
 ## Official Deployments
 
 Charli3 maintains and supports only official deployments that use the $C3 token and unmodified protocol economics.
-
-
