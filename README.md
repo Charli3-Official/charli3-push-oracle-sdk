@@ -1,12 +1,12 @@
 # Charli3 Push Oracle Offchain Core SDK
 
-This repository explores the use of pycardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It now leverages the charli3-offchain-core package, which contains shared code that is used across different private repositories of the Charli3 oracle network.
+This repository explores the use of PyCardano in the Charli3 Oracle implementation. It covers minting tokens, implementing datums, redeemers, and Node off-chain transactions in Python. It leverages the charli3-offchain-core package, which contains shared code that is used across different repositories of the Charli3 oracle network.
 
 **Note**: The following demo was tested with Cardano-node v8.9.3, Ogmios v6.4.0, and Kupo v2.8.0. Older versions may not work properly.
 
 ### Compatible charli3-oracle-prototype Branches
 
-- [main](https://github.com/Charli3-Official/charli3-oracle-prototype/tree/main)
+- [main](https://github.com/Charli3-Official/charli3-push-oracle-contracts/tree/main)
 
 ## Getting Started
 
@@ -20,13 +20,13 @@ This repository explores the use of pycardano in the Charli3 Oracle implementati
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Charli3-Official/charli3-offchain-core.git
+git clone https://github.com/Charli3-Official/charli3-push-oracle-sdk.git
 ```
 
 2. Change to the repository's directory:
 
 ```bash
-cd charli3-offchain-core
+cd charli3-push-oracle-sdk
 ```
 
 3. Install dependencies using Poetry:
@@ -35,13 +35,11 @@ cd charli3-offchain-core
 poetry install
 ```
 
-4. To Install the `charli3-offchain-core` package. Replace `<username>` and `<token>` with your GitHub username and a personal access token that has the `read:packages` scope:
+4. Install the package as a dependency in your project:
 
 ```bash
-poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-offchain-core.git
+poetry add git+https://github.com/Charli3-Official/charli3-push-oracle-sdk.git
 ```
-
-Note: This package is hosted privately on GitHub. To install it, you need to provide your GitHub username and a personal access token that has the read:packages scope.
 
 # Oracle Deployment Guide
 
@@ -245,7 +243,7 @@ Check out the implementation of Oracle Owner off-chain transactions in Python in
 The `charli3-offchain-core` package uses Poetry for dependency management and building. Here are the steps to build the package:
 1. Navigate to the root directory of the repository:
 ```bash
-cd charli3-offchain-core
+cd charli3-push-oracle-sdk
 ```
 
 2. To build the package, run:
@@ -262,10 +260,10 @@ To import the charli3-offchain-core package into other repositories:
 
 1. Navigate to the root directory of the other repository.
 2. Make sure Poetry is installed in the current environment. If not, follow the installation guide in the [Prerequisites](#prerequisites) section.
-3. Add the `charli3-offchain-core` package using Poetry. Replace `<username>` and `<token>` with your GitHub username and a personal access token that has the `read:packages` scope:
+3. Add the `charli3-offchain-core` package using Poetry:
 
 ```bash
-poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-offchain-core.git
+poetry add git+https://github.com/Charli3-Official/charli3-push-oracle-sdk.git
 ```
 
 4. After successful installation, you can import the package into your Python files like any other Python package. For example:
@@ -273,8 +271,6 @@ poetry add git+https://<username>:<token>@github.com/Charli3-Official/charli3-of
 ```python
 from charli3_offchain_core import mint, datums, redeemers, node
 ```
-
-Remember to replace `<username>` and `<token>` with your actual GitHub username and token.
 
 ## Using Pre-Commit Hooks
 
